@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'diseaseresult.dart';
 
 class YourDiseasePage extends StatefulWidget {
@@ -48,68 +50,222 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
   };
 
   final Set<String> selectedSymptoms = {};
+  final TextEditingController _controller = TextEditingController();
+
+  Future<List<String>> _getMatchedSymptoms(String input) async {
+    final allSymptoms = symptomCategories.values.expand((e) => e).toList();
+
+    final prompt = """
+      사용자가 입력한 문장을 증상 리스트와 비교해서,
+      해당되는 모든 증상을 찾아주세요.
+      출력은 반드시 증상 이름만 쉼표(,)로 구분된 리스트 형태로만 써주세요.
+      
+      사용자 입력: "$input"
+      증상 리스트: ${allSymptoms.toString()}
+      """;
+
+    final response = await http.post(
+      Uri.parse("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"),
+      headers: {
+        "Content-Type": "application/json",
+        "X-goog-api-key": "AIzaSyCIYlmRYTOdfi_qOtcxHlp046oqZC-3uPI",
+      },
+      body: jsonEncode({
+        "contents": [
+          {
+            "parts": [
+              {"text": prompt}
+            ]
+          }
+        ]
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+
+      if (data["candidates"] != null &&
+          data["candidates"].isNotEmpty &&
+          data["candidates"][0]["content"] != null &&
+          data["candidates"][0]["content"]["parts"] != null &&
+          data["candidates"][0]["content"]["parts"].isNotEmpty) {
+        final rawText = data["candidates"][0]["content"]["parts"][0]["text"].trim();
+
+        // 쉼표 기준 분리 → 중복 제거
+        final results = rawText.split(",").map((e) => e.trim()).toSet().toList();
+        return List<String>.from(results);
+      } else {
+        print("⚠️ Gemini 응답 파싱 실패: ${response.body}");
+        return <String>[];
+      }
+    } else {
+      print("API Error: ${response.body}");
+      return <String>[];
+    }
+  }
+  void _showConfirmDialog(BuildContext context, List<String> matchedSymptoms) {
+    final TextEditingController popupController = TextEditingController();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: const Text("증상 확인"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ✅ 전체 선택된 증상을 보여주도록 변경
+                  Text(
+                    "다음 증상으로 기록할게요:\n${selectedSymptoms.join(", ")}",
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: popupController,
+                    decoration: const InputDecoration(
+                      hintText: "추가 증상이 있나요?",
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () async {
+                    final newInput = popupController.text.trim();
+                    if (newInput.isNotEmpty) {
+                      final newMatches = await _getMatchedSymptoms(newInput);
+
+                      if (newMatches.isNotEmpty) {
+                        setState(() {
+                          selectedSymptoms.addAll(newMatches);
+                        });
+                        // ✅ 팝업 내부 UI 갱신
+                        setStateDialog(() {});
+                        popupController.clear();
+                      }
+                    }
+                  },
+                  child: const Text("추가 입력"),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context); // 팝업 닫기
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => DiseaseResultPage(
+                          selectedSymptoms: selectedSymptoms.toList(),
+                        ),
+                      ),
+                    );
+                  },
+                  child: const Text("없습니다"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+
+
+
+  void _matchSymptoms(String input) async {
+    if (input.trim().isEmpty) return;
+
+    final matchedSymptoms = await _getMatchedSymptoms(input);
+
+    if (matchedSymptoms.isNotEmpty) {
+      setState(() {
+        selectedSymptoms.addAll(matchedSymptoms);
+      });
+
+      _showConfirmDialog(context, matchedSymptoms); // ✅ 팝업 띄우기
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("증상을 매칭하지 못했습니다.")),
+      );
+    }
+
+    _controller.clear();
+  }
+
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("증상 선택"),
-        centerTitle: true,
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF1E3C72), Color(0xFF2A5298)],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
+      appBar: AppBar(title: const Text("증상 입력/선택")),
+      body: Column(
+        children: [
+          // ✅ 텍스트 입력창
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    decoration: const InputDecoration(
+                      hintText: "어떤 증상이 있으신가요?",
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: () => _matchSymptoms(_controller.text),
+                  child: const Text("확인"),
+                ),
+              ],
             ),
           ),
-        ),
-        foregroundColor: Colors.white,
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(12),
-        children: symptomCategories.entries.map((entry) {
-          return Card(
-            elevation: 3,
-            margin: const EdgeInsets.symmetric(vertical: 8),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: ExpansionTile(
-              title: Text(
-                entry.key,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-              ),
-              children: entry.value.map((symptom) {
-                return CheckboxListTile(
-                  title: Text(
-                    symptom,
-                    style: const TextStyle(fontSize: 16),
+
+          // ✅ 체크박스 UI (자동 선택 반영)
+          Expanded(
+            child: ListView(
+              children: symptomCategories.entries.map((entry) {
+                return Card(
+                  child: ExpansionTile(
+                    title: Text(entry.key),
+                    collapsedBackgroundColor: entry.value.any((s) => selectedSymptoms.contains(s))
+                        ? Colors.red[100] // ✅ 해당 카테고리 안에서 하나라도 선택되면 파란색
+                        : null,
+                    backgroundColor: entry.value.any((s) => selectedSymptoms.contains(s))
+                        ? Colors.red[100]
+                        : null,
+                    children: entry.value.map((symptom) {
+                      return CheckboxListTile(
+                        title: Text(symptom),
+                        value: selectedSymptoms.contains(symptom),
+                        onChanged: (checked) {
+                          setState(() {
+                            if (checked!) {
+                              selectedSymptoms.add(symptom);
+                            } else {
+                              selectedSymptoms.remove(symptom);
+                            }
+                          });
+                        },
+                      );
+                    }).toList(),
                   ),
-                  activeColor: Colors.blueAccent,
-                  value: selectedSymptoms.contains(symptom),
-                  onChanged: (checked) {
-                    setState(() {
-                      if (checked!) {
-                        selectedSymptoms.add(symptom);
-                      } else {
-                        selectedSymptoms.remove(symptom);
-                      }
-                    });
-                  },
                 );
               }).toList(),
             ),
-          );
-        }).toList(),
+          ),
+        ],
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: ElevatedButton.icon(
+          child: ElevatedButton(
             onPressed: selectedSymptoms.isEmpty
                 ? null
                 : () {
@@ -122,20 +278,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
                 ),
               );
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blueAccent,
-              disabledBackgroundColor: Colors.grey[300],
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
-              ),
-              elevation: 4,
-            ),
-            icon: const Icon(Icons.check, color: Colors.white),
-            label: const Text(
-              "확인",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
+            child: const Text("확인"),
           ),
         ),
       ),
