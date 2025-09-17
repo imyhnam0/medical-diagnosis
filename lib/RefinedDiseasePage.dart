@@ -2,242 +2,136 @@ import 'package:flutter/material.dart';
 
 class RefinedDiseasePage extends StatefulWidget {
   final List<Map<String, dynamic>> diseases;
+  final Map<String, List<String>> questionToDiseases; // 질문 ↔ 질병 매핑
 
-  const RefinedDiseasePage({super.key, required this.diseases});
+  const RefinedDiseasePage({
+    super.key,
+    required this.diseases,
+    required this.questionToDiseases,
+  });
 
   @override
   State<RefinedDiseasePage> createState() => _RefinedDiseasePageState();
 }
 
 class _RefinedDiseasePageState extends State<RefinedDiseasePage> {
-  final Set<String> selectedWorseningFactors = {};
-  final Set<String> selectedHistory = {};
-  final Set<String> selectedSocial = {};
-
-  bool stepWorsening = true;
-  bool stepHistory = false;
-  bool stepSocial = false;
-  bool stepResult = false;
-
-  // ✅ 최종 점수 저장
-  Map<String, int> scores = {};
+  int currentPage = 0; // 현재 페이지 (10개씩 나눔)
+  final Set<String> answeredQuestions = {}; // ✅ 체크된 질문
+  Map<String, int> diseaseScores = {}; // ✅ 질병별 점수
 
   @override
   void initState() {
     super.initState();
-    // ✅ 초기 점수는 모든 질환에 대해 1점
-    for (var d in widget.diseases) {
-      scores[d["질환명"] as String] = 1;
+    // 초기 점수 0으로 설정
+    for (var disease in widget.diseases) {
+      final name = disease["질환명"] ?? "이름 없음";
+      diseaseScores[name] = 0;
     }
   }
 
-  // ✅ 선택한 요인 점수 추가 (2점씩)
-  void applyScoring(Set<String> selected, String fieldName) {
-    for (var d in widget.diseases) {
-      final factors = List<String>.from(d[fieldName] ?? []);
-      if (selected.any((s) => factors.contains(s))) {
-        final name = d["질환명"] as String;
-        scores[name] = (scores[name] ?? 0) + 2;
+  /// ✅ 전체 질문 리스트 (순서 고정)
+  List<String> get allQuestions => widget.questionToDiseases.keys.toList();
+
+  /// ✅ 현재 페이지의 질문 10개만 가져오기
+  List<String> get currentQuestions {
+    final start = currentPage * 10;
+    final end = (start + 10).clamp(0, allQuestions.length);
+    return allQuestions.sublist(start, end);
+  }
+
+  /// ✅ 체크 이벤트
+  void toggleAnswer(String question, bool checked) {
+    setState(() {
+      if (checked) {
+        answeredQuestions.add(question);
+        // 질문과 연결된 질병 점수 올리기
+        for (var disease in widget.questionToDiseases[question] ?? []) {
+          diseaseScores[disease] = (diseaseScores[disease] ?? 0) + 1;
+        }
+      } else {
+        answeredQuestions.remove(question);
+        // 체크 해제 시 점수 차감
+        for (var disease in widget.questionToDiseases[question] ?? []) {
+          diseaseScores[disease] = (diseaseScores[disease] ?? 0) - 1;
+        }
       }
+    });
+  }
+
+  /// ✅ 다음 페이지로 이동
+  void goToNextPage() {
+    if ((currentPage + 1) * 10 >= allQuestions.length) {
+      // 마지막 페이지 → 결과 보여주기
+      showFinalResult();
+    } else {
+      setState(() {
+        currentPage++;
+      });
     }
+  }
+
+  /// ✅ 최종 결과 계산
+  void showFinalResult() {
+    // 가장 점수가 높은 질병 찾기
+    final sorted = diseaseScores.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final topDisease = sorted.isNotEmpty ? sorted.first.key : "알 수 없음";
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("최종 결과"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text("가장 가능성이 높은 질병: $topDisease"),
+              const SizedBox(height: 12),
+              ...sorted.map((e) => Text("${e.key}: ${e.value}점")),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("확인"),
+            )
+          ],
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (stepWorsening) {
-      return buildSelectionScreen(
-        title: "악화 요인 선택",
-        options: widget.diseases
-            .expand((d) => List<String>.from(d["악화 요인"] ?? []))
-            .toSet()
-            .toList(),
-        selected: selectedWorseningFactors,
-        onNext: () {
-          applyScoring(selectedWorseningFactors, "악화 요인");
-          setState(() {
-            stepWorsening = false;
-            stepHistory = true;
-          });
-        },
-      );
-    }
-
-    if (stepHistory) {
-      return buildSelectionScreen(
-        title: "과거 질환 이력 선택",
-        options: widget.diseases
-            .expand((d) => List<String>.from(d["과거 질환 이력"] ?? []))
-            .toSet()
-            .toList(),
-        selected: selectedHistory,
-        onNext: () {
-          applyScoring(selectedHistory, "과거 질환 이력");
-          setState(() {
-            stepHistory = false;
-            stepSocial = true;
-          });
-        },
-      );
-    }
-
-    if (stepSocial) {
-      return buildSelectionScreen(
-        title: "사회적 이력 선택",
-        options: widget.diseases
-            .expand((d) => List<String>.from(d["사회적 이력"] ?? []))
-            .toSet()
-            .toList(),
-        selected: selectedSocial,
-        onNext: () {
-          applyScoring(selectedSocial, "사회적 이력");
-          setState(() {
-            stepSocial = false;
-            stepResult = true;
-          });
-        },
-      );
-    }
-
-    if (stepResult) {
-      // ✅ 최종 결과: 점수를 퍼센트로 변환 + 내림차순 정렬
-      final totalScore = scores.values.fold<int>(0, (a, b) => a + b);
-      final result = scores.entries.map((e) {
-        final percent = totalScore > 0 ? (e.value / totalScore * 100).toStringAsFixed(1) : "0";
-        return {"질환명": e.key, "점수": e.value, "퍼센트": percent};
-      }).toList();
-
-      result.sort((a, b) => (b["점수"] as int).compareTo(a["점수"] as int));
-
+    if (allQuestions.isEmpty) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text("최종 후보 질환"),
-          centerTitle: true,
-          flexibleSpace: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF1E3C72), Color(0xFF2A5298)],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-          ),
-          foregroundColor: Colors.white,
-        ),
-        body: ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: result.length,
-          itemBuilder: (context, index) {
-            final r = result[index];
-            return Card(
-              elevation: 4,
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      r["질환명"] as String,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    LinearProgressIndicator(
-                      value: double.tryParse(r["퍼센트"].toString())! / 100,
-                      minHeight: 8,
-                      borderRadius: BorderRadius.circular(8),
-                      backgroundColor: Colors.grey[300],
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        index == 0 ? Colors.redAccent : Colors.blueAccent,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text("점수: ${r["점수"]}, 확률: ${r["퍼센트"]}%"),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
+        appBar: AppBar(title: const Text("질문 검사")),
+        body: const Center(child: Text("질문이 없습니다.")),
       );
     }
 
-    return const SizedBox.shrink();
-  }
-
-  // ✅ 공통 선택 화면
-  Widget buildSelectionScreen({
-    required String title,
-    required List<String> options,
-    required Set<String> selected,
-    required VoidCallback onNext,
-  }) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(title),
-        centerTitle: true,
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF1E3C72), Color(0xFF2A5298)],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-          ),
-        ),
-        foregroundColor: Colors.white,
+        title: Text("질문 검사 (${currentPage + 1}/${(allQuestions.length / 10).ceil()})"),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: options.map((opt) {
-          return Card(
-            elevation: 2,
-            margin: const EdgeInsets.symmetric(vertical: 6),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: CheckboxListTile(
-              title: Text(opt),
-              value: selected.contains(opt),
-              activeColor: Colors.blueAccent,
-              onChanged: (checked) {
-                setState(() {
-                  if (checked!) {
-                    selected.add(opt);
-                  } else {
-                    selected.remove(opt);
-                  }
-                });
-              },
-            ),
+        children: currentQuestions.map((q) {
+          final checked = answeredQuestions.contains(q);
+          return CheckboxListTile(
+            title: Text(q),
+            value: checked,
+            onChanged: (val) {
+              toggleAnswer(q, val ?? false);
+            },
           );
         }).toList(),
       ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: ElevatedButton.icon(
-            onPressed: onNext,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blueAccent,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
-              ),
-              elevation: 4,
-            ),
-            icon: const Icon(Icons.navigate_next, color: Colors.white),
-            label: const Text(
-              "다음",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-          ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: goToNextPage,
+        label: Text(
+          (currentPage + 1) * 10 >= allQuestions.length ? "결과 보기" : "다음",
         ),
+        icon: const Icon(Icons.arrow_forward),
       ),
     );
   }

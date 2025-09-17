@@ -13,41 +13,44 @@ class YourDiseasePage extends StatefulWidget {
 class _YourDiseasePageState extends State<YourDiseasePage> {
   final Map<String, List<String>> symptomCategories = {
     "흉부 관련 증상": [
-      "흉통", "흉부 불편감", "흉부 압박감", "흉부 조임/답답함",
-      "방사통", "국소 흉벽 통증", "흉벽 압통", "멍/타박상"
+      "흉통", "협심증 유사 흉통", "갑작스러운 흉통", "설명되지 않는 흉통", "안정 시 흉통",
+      "작열성 흉통", "흉골 뒤 압박감", "흉부 불편감", "흉부 압박감", "흉부 조임/답답함",
+      "흉벽 통증", "흉벽 불편감", "늑골 압통", "방사통", "방사성 흉통"
     ],
     "호흡기 증상": [
-      "호흡곤란", "운동 시 호흡곤란", "야간 호흡곤란", "흉부 압박과 호흡곤란 동반",
-      "기침", "가래", "객혈", "발열", "오한/밤에 식은땀", "호흡 시 악화되는 통증"
+      "호흡곤란", "가벼운 호흡곤란", "운동 시 호흡곤란", "야간 발작성 호흡곤란",
+      "기침", "마른기침", "가래", "객혈", "흉막성 통증", "천명음"
     ],
     "심혈관/전신 증상": [
-      "발한", "두근거림", "가슴 두근거림과 어지럼증 동반", "실신",
-      "어지럼증", "피로", "전신 쇠약감", "하지 부종", "전신 쇠약과 피로"
+      "발열", "야간 발한", "피로", "전신 권태", "전신 쇠약감", "체중 감소",
+      "두근거림", "가슴 두근거림과 어지럼증 동반", "실신", "어지럼증",
+      "다리 부종"
     ],
     "소화기 증상": [
-      "구역/구토", "상복부 통증", "상복부 불편감", "소화불량/더부룩함",
-      "위산 역류/속쓰림", "트림/역류", "상복부 덩어리감", "복부 팽만감",
-      "설사", "변비"
+      "오심", "구토", "설사", "소화기 증상", "속쓰림", "역류",
+      "연하곤란", "상복부 불편감", "명치 통증", "복부 불편감", "복부 팽만",
+      "복부 팽만감", "간비대", "복수"
     ],
     "신경/근골격계 증상": [
-      "근육통", "뻣뻣함", "국소 근육 운동 제한", "전신 통증",
-      "팔 저림/무감각", "등 통증", "목 통증", "관절통",
-      "운동 시 악화되는 통증", "신경병성 통증"
+      "목 통증", "등 통증", "등통증", "등/허리 통증",
+      "관절통", "국소 근육통", "국소 통증", "근육통",
+      "골통", "이질통", "작열통", "압통", "움직임 제한", "근력 약화", "팔 약화",
+      "감각 이상", "저림", "전신 통증", "두개골/흉부 변형"
     ],
     "피부/감각 증상": [
-      "피부 발진", "화끈거림/작열감", "가려움/따가움"
+      "발진", "작열감", "가려움", "유방 멍울"
     ],
     "신경/인지 기능 증상": [
-      "두통", "시야 이상", "청력 이상", "기억력 저하/집중력 저하"
+      "시각 증상", "수면 문제", "기억력 저하", "청력 이상"
     ],
     "정신/심리 증상": [
-      "불면", "수면 장애", "불안/걱정", "우울감",
-      "공황 발작", "플래시백"
+      "건강 불안", "신체 증상에 대한 집착", "걱정", "우울감", "플래시백"
     ],
     "여성 생식 관련 증상": [
-      "여성 생리 관련 증상"
-    ],
+      "골반 통증", "생리 문제"
+    ]
   };
+
 
   final Set<String> selectedSymptoms = {};
   final TextEditingController _controller = TextEditingController();
@@ -153,15 +156,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
                 ),
                 TextButton(
                   onPressed: () {
-                    Navigator.pop(context); // 팝업 닫기
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => DiseaseResultPage(
-                          selectedSymptoms: selectedSymptoms.toList(),
-                        ),
-                      ),
-                    );
+                    Navigator.pop(context);
                   },
                   child: const Text("없습니다"),
                 ),
@@ -231,35 +226,45 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
           Expanded(
             child: ListView(
               children: symptomCategories.entries.map((entry) {
+                final hasSelected = entry.value.any((s) => selectedSymptoms.contains(s));
+
                 return Card(
                   child: ExpansionTile(
-                    title: Text(entry.key),
-                    collapsedBackgroundColor: entry.value.any((s) => selectedSymptoms.contains(s))
-                        ? Colors.red[100] // ✅ 해당 카테고리 안에서 하나라도 선택되면 파란색
-                        : null,
-                    backgroundColor: entry.value.any((s) => selectedSymptoms.contains(s))
-                        ? Colors.red[100]
-                        : null,
+                    // ✅ 카테고리 타이틀을 Container로 감싸서 색상 지정
+                    title: Container(
+                      color: hasSelected ? Colors.red[100] : null,
+                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                      child: Text(
+                        entry.key,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
                     children: entry.value.map((symptom) {
-                      return CheckboxListTile(
-                        title: Text(symptom),
-                        value: selectedSymptoms.contains(symptom),
-                        onChanged: (checked) {
-                          setState(() {
-                            if (checked!) {
-                              selectedSymptoms.add(symptom);
-                            } else {
-                              selectedSymptoms.remove(symptom);
-                            }
-                          });
-                        },
+                      final isSelected = selectedSymptoms.contains(symptom);
+
+                      return Container(
+                        color: isSelected ? Colors.red[100] : null, // ✅ 선택된 항목만 빨강
+                        child: CheckboxListTile(
+                          title: Text(symptom),
+                          value: isSelected,
+                          onChanged: (checked) {
+                            setState(() {
+                              if (checked!) {
+                                selectedSymptoms.add(symptom);
+                              } else {
+                                selectedSymptoms.remove(symptom);
+                              }
+                            });
+                          },
+                        ),
                       );
                     }).toList(),
                   ),
                 );
               }).toList(),
             ),
-          ),
+          )
+
         ],
       ),
       bottomNavigationBar: SafeArea(
