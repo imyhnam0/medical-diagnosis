@@ -72,7 +72,6 @@ class _RefinedDiseasePageState extends State<RefinedDiseasePage> {
 
   /// ✅ 최종 결과 계산
   void showFinalResult() {
-    // 가장 점수가 높은 질병 찾기
     final sorted = diseaseScores.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
     final topDisease = sorted.isNotEmpty ? sorted.first.key : "알 수 없음";
@@ -80,26 +79,84 @@ class _RefinedDiseasePageState extends State<RefinedDiseasePage> {
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: const Text("최종 결과"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text("가장 가능성이 높은 질병: $topDisease"),
-              const SizedBox(height: 12),
-              ...sorted.map((e) => Text("${e.key}: ${e.value}점")),
-            ],
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 상단 아이콘 + 대표 질병
+                Icon(Icons.health_and_safety, color: Colors.redAccent, size: 48),
+                const SizedBox(height: 12),
+                Text(
+                  "가장 가능성이 높은 질병",
+                  style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  topDisease,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // 점수 리스트 (ProgressBar)
+                ...sorted.map((e) {
+                  final percentage = sorted.first.value == 0
+                      ? 0.0
+                      : e.value / sorted.first.value;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "${e.key} (${e.value}점)",
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                        const SizedBox(height: 4),
+                        LinearProgressIndicator(
+                          value: percentage,
+                          minHeight: 8,
+                          backgroundColor: Colors.grey[300],
+                          color: e.key == topDisease
+                              ? Colors.redAccent
+                              : Colors.blueAccent,
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+
+                const SizedBox(height: 20),
+
+                // 확인 버튼
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
+                  child: const Text(
+                    "확인",
+                    style: TextStyle(fontSize: 16, color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("확인"),
-            )
-          ],
         );
       },
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -110,28 +167,64 @@ class _RefinedDiseasePageState extends State<RefinedDiseasePage> {
       );
     }
 
+    final progress = ((currentPage * 10) / allQuestions.length).clamp(0.0, 1.0);
+
     return Scaffold(
       appBar: AppBar(
         title: Text("질문 검사 (${currentPage + 1}/${(allQuestions.length / 10).ceil()})"),
       ),
-      body: ListView(
-        children: currentQuestions.map((q) {
-          final checked = answeredQuestions.contains(q);
-          return CheckboxListTile(
-            title: Text(q),
-            value: checked,
-            onChanged: (val) {
-              toggleAnswer(q, val ?? false);
-            },
-          );
-        }).toList(),
+      body: Column(
+        children: [
+          // 진행률 바
+          LinearProgressIndicator(value: progress, minHeight: 6, backgroundColor: Colors.grey[300]),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(12),
+              itemCount: currentQuestions.length,
+              itemBuilder: (context, index) {
+                final q = currentQuestions[index];
+                final checked = answeredQuestions.contains(q);
+
+                return Card(
+                  elevation: 3,
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  color: checked ? Colors.blue[50] : Colors.white,
+                  child: ListTile(
+                    leading: Icon(
+                      checked ? Icons.check_circle : Icons.circle_outlined,
+                      color: checked ? Colors.blue : Colors.grey,
+                    ),
+                    title: Text(
+                      q,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: checked ? Colors.blue[900] : Colors.black,
+                      ),
+                    ),
+                    onTap: () => toggleAnswer(q, !checked),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: goToNextPage,
-        label: Text(
-          (currentPage + 1) * 10 >= allQuestions.length ? "결과 보기" : "다음",
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.all(16),
+        child: ElevatedButton(
+          onPressed: goToNextPage,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blue,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          child: Text(
+            (currentPage + 1) * 10 >= allQuestions.length ? "결과 보기" : "다음",
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
         ),
-        icon: const Icon(Icons.arrow_forward),
       ),
     );
   }
