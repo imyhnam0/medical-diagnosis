@@ -81,81 +81,94 @@ class _RefinedDiseasePageState extends State<RefinedDiseasePage> {
       builder: (context) {
         return Dialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // 상단 아이콘 + 대표 질병
-                Icon(Icons.health_and_safety, color: Colors.redAccent, size: 48),
-                const SizedBox(height: 12),
-                Text(
-                  "가장 가능성이 높은 질병",
-                  style: TextStyle(fontSize: 16, color: Colors.grey[700]),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  topDisease,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.7, // 다이얼로그 최대 높이 제한
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 상단 아이콘 + 대표 질병
+                  const Icon(Icons.health_and_safety,
+                      color: Colors.redAccent, size: 48),
+                  const SizedBox(height: 12),
+                  Text(
+                    "가장 가능성이 높은 질병",
+                    style: TextStyle(fontSize: 16, color: Colors.grey[700]),
                   ),
-                ),
-                const SizedBox(height: 20),
-
-                // 점수 리스트 (ProgressBar)
-                ...sorted.map((e) {
-                  final percentage = sorted.first.value == 0
-                      ? 0.0
-                      : e.value / sorted.first.value;
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "${e.key} (${e.value}점)",
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                        const SizedBox(height: 4),
-                        LinearProgressIndicator(
-                          value: percentage,
-                          minHeight: 8,
-                          backgroundColor: Colors.grey[300],
-                          color: e.key == topDisease
-                              ? Colors.redAccent
-                              : Colors.blueAccent,
-                        ),
-                      ],
+                  const SizedBox(height: 8),
+                  Text(
+                    topDisease,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
                     ),
-                  );
-                }),
-
-                const SizedBox(height: 20),
-
-                // 확인 버튼
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.redAccent,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   ),
-                  child: const Text(
-                    "확인",
-                    style: TextStyle(fontSize: 16, color: Colors.white),
+                  const SizedBox(height: 20),
+
+                  // ✅ 질병 리스트 스크롤 가능하게 변경
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: sorted.map((e) {
+                          final percentage = sorted.first.value == 0
+                              ? 0.0
+                              : e.value / sorted.first.value;
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 6),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "${e.key} (${e.value}점)",
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                                const SizedBox(height: 4),
+                                LinearProgressIndicator(
+                                  value: percentage,
+                                  minHeight: 8,
+                                  backgroundColor: Colors.grey[300],
+                                  color: e.key == topDisease
+                                      ? Colors.redAccent
+                                      : Colors.blueAccent,
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
                   ),
-                ),
-              ],
+
+                  const SizedBox(height: 20),
+
+                  // 확인 버튼
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.redAccent,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 12),
+                    ),
+                    child: const Text(
+                      "확인",
+                      style: TextStyle(fontSize: 16, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
       },
     );
   }
+
 
 
   @override
