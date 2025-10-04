@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'RefinedDiseasePage.dart';
+import 'package:lottie/lottie.dart';
 
 class DiseaseResultPage extends StatefulWidget {
   final List<String> selectedSymptoms;
@@ -155,7 +156,7 @@ class _DiseaseResultPageState extends State<DiseaseResultPage> {
       MaterialPageRoute(
         builder: (context) => RefinedDiseasePage(
           diseases: diseases,
-          questionToDiseases: questionToDiseases, // ✅ 매핑 전달
+          questionToDiseases: questionToDiseases,
         ),
       ),
     );
@@ -164,8 +165,48 @@ class _DiseaseResultPageState extends State<DiseaseResultPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("질병 결과")),
-      body: const Center(child: CircularProgressIndicator()),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF1E3C72),
+          title: const Text(
+            "질병 결과",
+            style: TextStyle(color: Colors.white),
+          ),
+        ),
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF90CAF9), Color(0xFFE3F2FD)],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+          child: Center(
+            child: Card(
+              elevation: 6,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              child: Padding(
+                padding: const EdgeInsets.all(30),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Lottie.asset(
+                      "assets/medical_loading.json",
+                      width: 120,
+                      height: 120,
+                      repeat: true,
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      "결과를 분석하는 중입니다...",
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        )
+
     );
   }
 }

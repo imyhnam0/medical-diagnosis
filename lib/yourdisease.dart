@@ -1,3 +1,5 @@
+//두번째 페이지
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -13,41 +15,57 @@ class YourDiseasePage extends StatefulWidget {
 class _YourDiseasePageState extends State<YourDiseasePage> {
   final Map<String, List<String>> symptomCategories = {
     "흉부 관련 증상": [
-      "흉통", "협심증 유사 흉통", "갑작스러운 흉통", "설명되지 않는 흉통", "안정 시 흉통",
-      "작열성 흉통", "흉골 뒤 압박감", "흉부 불편감", "흉부 압박감", "흉부 조임/답답함",
-      "흉벽 통증", "흉벽 불편감", "늑골 압통", "방사통", "방사성 흉통"
+      "흉통", "협심증 유사 흉통", "갑작스러운 흉통", "설명되지 않는 흉통",
+      "안정 시 흉통", "작열성 흉통", "흉골 뒤 압박감", "흉부 불편감",
+      "흉부 압박감", "흉벽 통증", "흉벽 불편감", "늑골 압통",
+      "방사통", "방사성 흉통"
     ],
+
     "호흡기 증상": [
-      "호흡곤란", "가벼운 호흡곤란", "운동 시 호흡곤란", "야간 발작성 호흡곤란",
-      "기침", "마른기침", "가래", "객혈", "흉막성 통증", "천명음"
+      "호흡곤란", "가벼운 호흡곤란", "운동 시 호흡곤란",
+      "야간 발작성 호흡곤란", "기침", "가래", "객혈",
+      "마른기침", "흉막성 통증", "천명음"
     ],
+
     "심혈관/전신 증상": [
-      "발열", "야간 발한", "피로", "전신 권태", "전신 쇠약감", "체중 감소",
-      "두근거림", "가슴 두근거림과 어지럼증 동반", "실신", "어지럼증",
-      "다리 부종"
+      "발열", "야간 발한", "피로", "전신 권태", "체중 감소",
+      "두근거림", "실신", "어지럼증", "다리 부종"
     ],
+
     "소화기 증상": [
       "오심", "구토", "설사", "소화기 증상", "속쓰림", "역류",
-      "연하곤란", "상복부 불편감", "명치 통증", "복부 불편감", "복부 팽만",
-      "복부 팽만감", "간비대", "복수"
+      "연하곤란", "상복부 불편감", "명치 통증", "복부 불편감",
+      "복부 팽만"
     ],
+
     "신경/근골격계 증상": [
       "목 통증", "등 통증", "등통증", "등/허리 통증",
       "관절통", "국소 근육통", "국소 통증", "근육통",
-      "골통", "이질통", "작열통", "압통", "움직임 제한", "근력 약화", "팔 약화",
-      "감각 이상", "저림", "전신 통증", "두개골/흉부 변형"
+      "골통", "이질통", "작열통", "압통",
+      "움직임 제한", "근력 약화", "팔 약화",
+      "감각 이상", "저림", "전신 통증",
+      "두개골/흉부 변형", "뻣뻣함", "통증"
     ],
+
     "피부/감각 증상": [
-      "발진", "작열감", "가려움", "유방 멍울"
+      "발진", "작열감", "가려움", "유방 멍울", "멍"
     ],
+
     "신경/인지 기능 증상": [
-      "시각 증상", "수면 문제", "기억력 저하", "청력 이상"
+      "시각 증상", "수면 문제"
     ],
+
     "정신/심리 증상": [
-      "건강 불안", "신체 증상에 대한 집착", "걱정", "우울감", "플래시백"
+      "건강 불안", "신체 증상에 대한 집착", "걱정", "플래시백"
     ],
+
     "여성 생식 관련 증상": [
       "골반 통증", "생리 문제"
+    ],
+
+    "기타/기온 반응 관련 증상": [
+      "우상복부 통증", "측두부 통증", "설명되지 않는 다발성 증상",
+      "추위 불내성"
     ]
   };
 
@@ -278,14 +296,10 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         centerTitle: true,
-        title: const Text("증상 입력 / 선택", style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text("증상 입력 / 선택", style: TextStyle(fontWeight: FontWeight.bold,color: Colors.white,)),
         flexibleSpace: Container(
           decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.blue, Colors.lightBlueAccent],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+            color: Color(0xFF1E3C72),
           ),
         ),
       ),
@@ -308,7 +322,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
                 const SizedBox(width: 8),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryColor,
+                    backgroundColor: const Color(0xFF1E3C72),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8)),
                   ),
@@ -389,6 +403,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
               onPressed: selectedSymptoms.isEmpty
                   ? null
                   : () {
+                print("✅ 선택된 증상 리스트: $selectedSymptoms");
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -399,13 +414,11 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
                 );
               },
               child: Ink(
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Colors.blue, Colors.lightBlueAccent],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF1E3C72),
                 ),
                 child: Container(
+
                   alignment: Alignment.center,
                   child: const Text(
                     "확인",
