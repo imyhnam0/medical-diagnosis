@@ -332,7 +332,7 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
           children: [
             const SizedBox(height: 30),
             const Text(
-              "현재 느끼는 증상을 입력해주세요.",
+              "현재 느끼는 주요 증상을 입력해주세요.\n입력하신 내용을 바탕으로 흉통 관련 여부를 우선 판별합니다.",
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
