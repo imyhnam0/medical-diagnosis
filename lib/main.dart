@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-import 'yourdisease.dart';
+import 'symptom_select.dart';
+
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -86,6 +88,7 @@ class HomeBackground extends StatelessWidget {
             // 시작 버튼
             ElevatedButton.icon(
               onPressed: () {
+
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const ConsentPage()),
@@ -183,7 +186,7 @@ class ConsentPage extends StatelessWidget {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const YourDiseasePage()),
+                      MaterialPageRoute(builder: (context) => const SymptomSelectPage()),
                     );
                   },
                   style: ElevatedButton.styleFrom(

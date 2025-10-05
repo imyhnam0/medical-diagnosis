@@ -1,5 +1,4 @@
 //두번째 페이지
-
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -13,6 +12,8 @@ class YourDiseasePage extends StatefulWidget {
 }
 
 class _YourDiseasePageState extends State<YourDiseasePage> {
+
+
   final Map<String, List<String>> symptomCategories = {
     "흉부 관련 증상": [
       "흉통", "협심증 유사 흉통", "갑작스러운 흉통", "설명되지 않는 흉통",
