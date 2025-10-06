@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:lottie/lottie.dart';
 import 'main.dart';
+import 'ChatConsultPage.dart';
 
 class RefinedDiseasePage extends StatefulWidget {
   final List<Map<String, dynamic>> diseases;
@@ -307,6 +308,23 @@ class _RefinedDiseasePageState extends State<RefinedDiseasePage> {
                     ),
                   ),
                 ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    icon: const Icon(Icons.chat_bubble_outline, color: Color(0xFF1E3C72)),
+                    label: const Text("AI에게 후속 질문하기"),
+                    onPressed: () {
+                      Navigator.pop(context); // 다이얼로그 닫기
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ChatConsultPage(diseaseName: diseaseText),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+
               ],
             ),
           ),
