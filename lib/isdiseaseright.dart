@@ -304,9 +304,14 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
   void _onConfirmYes(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const YourDiseasePage()),
+      MaterialPageRoute(
+        builder: (_) => YourDiseasePage(
+          userInput: _controller.text.trim(), // ✅ 사용자 입력 전달
+        ),
+      ),
     );
   }
+
 
   /// ✅ “아니요” 눌렀을 때
   void _onConfirmNo() {

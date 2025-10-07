@@ -7,8 +7,13 @@ import 'package:lottie/lottie.dart';
 
 class DiseaseResultPage extends StatefulWidget {
   final List<String> selectedSymptoms;
+  final String userInput;
 
-  const DiseaseResultPage({super.key, required this.selectedSymptoms});
+  const DiseaseResultPage({
+    super.key,
+    required this.selectedSymptoms,
+    required this.userInput,
+  });
 
   @override
   State<DiseaseResultPage> createState() => _DiseaseResultPageState();
@@ -55,7 +60,8 @@ class _DiseaseResultPageState extends State<DiseaseResultPage> {
     
     아래 리스트의 각 항목을 보고, 위의 맥락에 맞게 환자에게 실제로 문진 시 사용할 수 있는  
     짧고 자연스러운 한국어 질문문으로 변환하세요.  
-    질문은 반드시 예/아니오로 대답할 수 있어야 합니다.
+    ⚠️ 주의: 각 질문은 반드시 "예/아니오"로 대답할 수 있는 문장만 작성하며,  
+    "필요시 다른 질문으로 대체" 등의 부연설명이나 괄호 설명은 절대로 포함하지 마세요.
     
     출력 형식:
     "원본항목:변환된 질문"  
@@ -178,6 +184,8 @@ class _DiseaseResultPageState extends State<DiseaseResultPage> {
         builder: (context) => RefinedDiseasePage(
           diseases: diseases,
           questionToDiseases: questionToDiseases,
+          userInput: widget.userInput,
+          selectedSymptoms: widget.selectedSymptoms,
         ),
       ),
     );

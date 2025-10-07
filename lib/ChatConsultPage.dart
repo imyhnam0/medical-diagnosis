@@ -24,6 +24,8 @@ class _ChatConsultPageState extends State<ChatConsultPage> {
       _isLoading = true;
     });
 
+    _controller.clear();
+
     await Future.delayed(const Duration(milliseconds: 300));
     _scrollController.animateTo(
       _scrollController.position.maxScrollExtent + 100,
@@ -98,6 +100,24 @@ class _ChatConsultPageState extends State<ChatConsultPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF1E3C72),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            Navigator.pop(context); // 🔹 RefinedDiseasePage로 돌아감
+          },
+        ),
+        title: Text(
+          "AI 상담 (${widget.diseaseName})",
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        centerTitle: true,
+      ),
       // 🩺 부드러운 의료톤 그라데이션 배경
       body: Container(
         decoration: const BoxDecoration(

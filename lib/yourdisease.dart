@@ -5,7 +5,8 @@ import 'dart:convert';
 import 'diseaseresult.dart';
 
 class YourDiseasePage extends StatefulWidget {
-  const YourDiseasePage({super.key});
+  final String userInput;
+  const YourDiseasePage({super.key, required this.userInput});
 
   @override
   State<YourDiseasePage> createState() => _YourDiseasePageState();
@@ -176,13 +177,28 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
     final allSymptoms = symptomCategories.values.expand((e) => e).toList();
 
     final prompt = """
-      사용자가 입력한 문장을 증상 리스트와 비교해서,
-      해당되는 모든 증상을 찾아주세요.
-      출력은 반드시 증상 이름만 쉼표(,)로 구분된 리스트 형태로만 써주세요.
-      
-      사용자 입력: "$input"
-      증상 리스트: ${allSymptoms.toString()}
-      """;
+    당신은 의료 전문가로서 사용자의 문장에서 증상을 추출하는 AI입니다.  
+    주어진 "증상 리스트"를 우선적으로 참고하되,  
+    만약 사용자의 표현이 리스트에 없는 새로운 증상이라면 의미를 보존한 자연스러운 이름으로 직접 생성해도 됩니다.
+    
+    규칙:
+    1️⃣ 사용자의 문장에서 의학적으로 의미 있는 모든 증상을 찾아내세요.  
+    2️⃣ "증상 리스트"에 존재하는 항목이 있으면 그대로 사용하세요.  
+    3️⃣ 존재하지 않으면 사용자의 문맥에 맞게 새로운 증상명을 간단하게 만들어 추가하세요.  
+       - 예: "머리가 아파요" → "두통"
+       - 예: "팔꿈치가 아파요" → "팔꿈치 통증"
+       - 예: "가슴이 조여요" → "흉통"
+    4️⃣ 결과는 쉼표(,)로 구분된 증상명 리스트 형태로만 출력합니다.  
+    5️⃣ 불필요한 설명, 문장, 해석은 포함하지 마세요.  
+    6️⃣ 출력은 예시처럼: "흉통, 두통, 팔꿈치 통증"
+    
+    사용자 입력:
+    "${input}"
+    
+    증상 리스트:
+    ${allSymptoms.join(", ")}
+    """;
+
 
     final response = await http.post(
       Uri.parse("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"),
@@ -553,6 +569,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
                   MaterialPageRoute(
                     builder: (context) => DiseaseResultPage(
                       selectedSymptoms: selectedSymptoms.toList(),
+                      userInput: widget.userInput,
                     ),
                   ),
                 );
