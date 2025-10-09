@@ -1,9 +1,9 @@
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'RefinedDiseasePage.dart';
 import 'package:lottie/lottie.dart';
+import 'RefinedDiseasePage.dart';
 
 class DiseaseResultPage extends StatefulWidget {
   final List<String> selectedSymptoms;
@@ -20,172 +20,269 @@ class DiseaseResultPage extends StatefulWidget {
 }
 
 class _DiseaseResultPageState extends State<DiseaseResultPage> {
-  List<Map<String, dynamic>> diseases = [];
-  Map<String, List<String>> questionToDiseases = {}; // ✅ 질문 ↔ 질병 매핑
+  final String apiKey = "AIzaSyCIYlmRYTOdfi_qOtcxHlp046oqZC-3uPI"; // 🔑 Gemini API 키 넣기
+  bool isLoading = true;
+  bool isFinished = false;
 
-  // ✅ 중복 제거된 리스트 저장
-  Set<String> pastHistories = {};
-  Set<String> socialHistories = {};
-  Set<String> aggravatingFactors = {};
-
-  // ✅ factor → 관련 질병 매핑
-  Map<String, Set<String>> factorToDiseases = {};
+  List<Map<String, dynamic>> candidateDiseases = [];
+  Map<String, double> diseaseProbabilities = {};
+  String? currentQuestion;
+  String? finalDisease;
+  int currentStep = 0;
+  List<Map<String, String>> questionHistory = [];
 
   @override
   void initState() {
     super.initState();
-    fetchMatchingDiseases();
+    _initializeDiagnosis();
   }
 
-  /// ✅ LLM API를 통해 사용자 친화적 질문으로 변환
-  Future<Map<String, String>> generateQuestions(Set<String> items) async {
-    if (items.isEmpty) return {};
+  // ✅ 초기 진단 데이터 로딩 (개선 버전)
+  Future<void> _initializeDiagnosis() async {
+    final snapshot = await FirebaseFirestore.instance.collection("diseases_ko").get();
+
+    final matches = snapshot.docs.where((doc) {
+      final data = doc.data();
+      final symptoms = List<String>.from(data["증상"] ?? []);
+      return widget.selectedSymptoms.any((s) => symptoms.contains(s));
+    }).map((doc) {
+      final d = doc.data();
+      return {
+        "질환명": d["질환명"],
+        "과거 질환 이력": List<String>.from(d["과거 질환 이력"] ?? []),
+        "사회적 이력": List<String>.from(d["사회적 이력"] ?? []),
+        "악화 요인": List<String>.from(d["악화 요인"] ?? []),
+        "위험 요인": List<String>.from(d["위험 요인"] ?? []),
+      };
+    }).toList();
+
+    candidateDiseases = matches;
+
+    // 초기 확률 균등 분포
+    for (var d in candidateDiseases) {
+      diseaseProbabilities[d["질환명"]] = 1 / candidateDiseases.length;
+    }
+
+    // 첫 질문 생성
+    await _generateNextQuestion();
+    setState(() => isLoading = false);
+  }
+
+
+  // ✅ Gemini를 통한 질문 생성
+  Future<void> _generateNextQuestion() async {
+    currentStep++;
+
+    // 🔹 Firestore에서 불러온 각 질병의 세부 요인들을 카테고리별로 구조화
+    final remainingDiseasesText = candidateDiseases.map((d) {
+      final name = d["질환명"];
+      final past = (d["과거 질환 이력"] ?? []).join(", ");
+      final social = (d["사회적 이력"] ?? []).join(", ");
+      final aggravating = (d["악화 요인"] ?? []).join(", ");
+      final risk = (d["위험 요인"] ?? []).join(", ");
+      return """
+- $name  
+  • 과거 질환 이력: $past  
+  • 사회적 이력: $social  
+  • 악화 요인: $aggravating  
+  • 위험 요인: $risk
+  """;
+    }).join("\n");
+
+    final askedTopics = questionHistory.map((q) => q["question"]).join(", ");
 
     final prompt = """
-    당신은 임상 문진용 질문을 작성하는 의료 전문 어시스턴트입니다.  
-    아래 리스트는 질병 데이터베이스에 포함된 3가지 요인 카테고리에 속한 항목들입니다.  
-    각 항목은 환자의 상태를 평가하기 위한 근거로 사용됩니다.
-    
-    - "악화 요인" 항목은 증상이 악화되는 상황을 의미합니다.  
-      → 질문 예시: "스트레스" → "스트레스를 받을 때 증상이 더 심해지시나요?"  
-      → "추위" → "추운 날씨에 증상이 심해지나요?"
-    
-    - "사회적 이력" 항목은 생활습관이나 환경적 요인을 의미합니다.  
-      → 질문 예시: "수면 부족" → "평소에 수면이 부족하신가요?"  
-      → "정서적 스트레스" → "정서적으로 스트레스를 자주 느끼시나요?"
-    
-    - "과거 질환 이력" 항목은 과거에 진단받거나 앓았던 질병을 의미합니다.  
-      → 질문 예시: "우울증" → "과거에 우울증을 앓은 적이 있나요?"  
-      → "만성 피로 증후군" → "이전에 만성 피로 증후군 진단을 받은 적이 있나요?"
-    
-    아래 리스트의 각 항목을 보고, 위의 맥락에 맞게 환자에게 실제로 문진 시 사용할 수 있는  
-    짧고 자연스러운 한국어 질문문으로 변환하세요.  
-    ⚠️ 주의: 각 질문은 반드시 "예/아니오"로 대답할 수 있는 문장만 작성하며,  
-    "필요시 다른 질문으로 대체" 등의 부연설명이나 괄호 설명은 절대로 포함하지 마세요.
-    
-    출력 형식:
-    "원본항목:변환된 질문"  
-    각 항목은 줄바꿈으로 구분해주세요.
-    
-    항목:
-    ${items.join("\n")}
-    """;
+당신은 임상 의사입니다.
+아래는 환자가 호소한 증상과 Firestore에서 불러온 질병 데이터입니다.
 
+[환자 증상]
+${widget.selectedSymptoms.join(", ")}
 
-    final response = await http.post(
+[남은 질병 후보 데이터]
+$remainingDiseasesText
+
+이전 질문 및 답변:
+${questionHistory.map((q) => "Q: ${q["question"]} → A: ${q["answer"]}").join("\n")}
+
+위 질문들에서 이미 다루어진 주제(${askedTopics})와 같은 의미나 단어를 절대 반복하지 마세요.
+
+다음 조건을 반드시 지키세요:
+1️⃣ 이전 질문에서 이미 다룬 내용은 다시 묻지 않는다.  
+2️⃣ 남은 질병들의 차이점을 기반으로 ‘새로운 구분 요인’을 찾아 질문한다.  
+3️⃣ 질문은 예/아니오로 대답 가능해야 한다.  
+4️⃣ 한 문장만 출력한다.
+
+출력 예시:
+"최근에 식후에 통증이 심해지나요?"  
+"황달 증상이 있나요?"
+""";
+
+    final res = await http.post(
       Uri.parse("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"),
       headers: {
         "Content-Type": "application/json",
-        "X-goog-api-key": "AIzaSyCIYlmRYTOdfi_qOtcxHlp046oqZC-3uPI", // 🔑 본인 API 키로 교체
+        "X-goog-api-key": apiKey,
       },
       body: jsonEncode({
         "contents": [
-          {
-            "parts": [
-              {"text": prompt}
-            ]
-          }
+          {"parts": [{"text": prompt}]}
         ]
       }),
     );
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final rawText =
-      data["candidates"][0]["content"]["parts"][0]["text"].trim();
+    final data = jsonDecode(res.body);
+    final text = data["candidates"][0]["content"]["parts"][0]["text"].trim();
 
-      // "원본:질문" 형식 → Map 변환
-      final Map<String, String> factorToQuestion = {};
-      for (var line in rawText.split("\n")) {
-        if (line.contains(":")) {
-          final parts = line.split(":");
-          if (parts.length >= 2) {
-            final original = parts[0].trim();
-            final question = parts.sublist(1).join(":").trim();
-            factorToQuestion[original] = question;
-          }
-        }
-      }
-
-      print("✅ 생성된 질문 개수: ${factorToQuestion.length}");
-      return factorToQuestion;
-    } else {
-      print("⚠️ API Error: ${response.body}");
-      return {};
+// ✅ 같은 질문이거나, 유사한 의미면 다시 요청
+    if (questionHistory.any((q) => q["question"]?.trim() == text.trim())) {
+      print("⚠️ 중복 질문 감지 → 다시 요청");
+      await _generateNextQuestion();
+      return;
     }
+
+
+    setState(() => currentQuestion = text);
+
   }
 
-  Future<void> fetchMatchingDiseases() async {
-    final firestore = FirebaseFirestore.instance;
-    final snapshot = await firestore.collection("diseases_ko").get();
+  // ✅ 확률 업데이트 (Softmax 스타일, 필드 구분 반영)
+  void _updateProbabilities(bool isYes) {
+    const double alpha = 1.25; // 반응 민감도
+    const double decay = 0.9; // 불일치시 감쇠율
 
-    // ✅ 선택된 증상 중 하나라도 포함된 질환만 가져오기
-    final matches = snapshot.docs
-        .where((doc) {
-      final data = doc.data();
-      final diseaseSymptoms = List<String>.from(data["증상"] ?? []);
-      return widget.selectedSymptoms
-          .any((symptom) => diseaseSymptoms.contains(symptom));
-    })
-        .map((doc) => doc.data())
-        .toList();
+    for (var d in candidateDiseases) {
+      final name = d["질환명"];
 
-    // ✅ factor → disease 매핑
-    for (var disease in matches) {
-      final name = disease["질환명"] ?? "이름 없음";
+      // 🔹 네 가지 요인 모두 합쳐서 하나의 리스트로
+      final allFactors = [
+        ...List<String>.from(d["과거 질환 이력"] ?? []),
+        ...List<String>.from(d["사회적 이력"] ?? []),
+        ...List<String>.from(d["악화 요인"] ?? []),
+        ...List<String>.from(d["위험 요인"] ?? []),
+      ];
 
-      for (var factor in List<String>.from(disease["과거 질환 이력"] ?? [])) {
-        pastHistories.add(factor);
-        factorToDiseases.putIfAbsent(factor, () => {}).add(name);
-      }
-      for (var factor in List<String>.from(disease["사회적 이력"] ?? [])) {
-        socialHistories.add(factor);
-        factorToDiseases.putIfAbsent(factor, () => {}).add(name);
-      }
-      for (var factor in List<String>.from(disease["악화 요인"] ?? [])) {
-        aggravatingFactors.add(factor);
-        factorToDiseases.putIfAbsent(factor, () => {}).add(name);
+      final hasRelation = allFactors.any((f) => currentQuestion!.contains(f));
+
+      if (hasRelation) {
+        diseaseProbabilities[name] =
+            (diseaseProbabilities[name]! * (isYes ? alpha : decay))
+                .clamp(0.001, 1.0);
+      } else {
+        diseaseProbabilities[name] =
+            (diseaseProbabilities[name]! * (isYes ? decay : alpha))
+                .clamp(0.001, 1.0);
       }
     }
 
-    print("📌 과거 질환 이력 개수: ${pastHistories.length}");
-    print("📌 사회적 이력 개수: ${socialHistories.length}");
-    print("📌 악화 요인 개수: ${aggravatingFactors.length}");
+    // 🔹 확률 정규화
+    final total = diseaseProbabilities.values.reduce((a, b) => a + b);
+    diseaseProbabilities.updateAll((k, v) => v / total);
+  }
 
-    // ✅ LLM을 이용해 질문 변환
-    final allFactors = {
-      ...pastHistories,
-      ...socialHistories,
-      ...aggravatingFactors
-    };
-    final factorToQuestion = await generateQuestions(allFactors);
 
-    // ✅ 질문 ↔ 질병 매핑 생성
-    final Map<String, List<String>> qToDiseases = {};
-    factorToQuestion.forEach((factor, question) {
-      final related = factorToDiseases[factor]?.toList() ?? [];
-      qToDiseases[question] = related;
+  // ✅ 사용자의 응답 처리
+  Future<void> _handleAnswer(bool isYes) async {
+    if (currentQuestion == null) return;
+
+    questionHistory.add({
+      "question": currentQuestion!,
+      "answer": isYes ? "예" : "아니오",
     });
 
-    setState(() {
-      diseases = matches;
-      questionToDiseases = qToDiseases;
-    });
+    _updateProbabilities(isYes);
 
-    // 🔍 Debug 출력
-    questionToDiseases.forEach((q, ds) {
-      print("❓ $q → ${ds.join(", ")}");
-    });
+    final top = diseaseProbabilities.entries.reduce(
+          (a, b) => a.value > b.value ? a : b,
+    );
 
-    // ✅ 질문까지 생성되면 바로 다음 페이지로 이동
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => RefinedDiseasePage(
-          diseases: diseases,
-          questionToDiseases: questionToDiseases,
-          userInput: widget.userInput,
-          selectedSymptoms: widget.selectedSymptoms,
+    // 종료 조건: 확률 0.85 이상 또는 10회 초과
+    if (top.value >= 0.85 || currentStep >= 10) {
+      setState(() {
+        isFinished = true;
+        finalDisease = top.key;
+      });
+
+      // ✅ RefinedDiseasePage로 이동
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => RefinedDiseasePage(
+            predictedDisease: finalDisease ?? "알 수 없음",
+            userInput: widget.userInput,
+            selectedSymptoms: widget.selectedSymptoms,
+          ),
+        ),
+      );
+
+
+      return;
+    }
+
+
+    await _generateNextQuestion();
+    setState(() {});
+  }
+
+
+  // ✅ 질문 UI
+  Widget _buildQuestionUI() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Lottie.asset("assets/medical_loading.json", width: 120),
+            const SizedBox(height: 30),
+            Text(
+              currentQuestion ?? "질문 생성 중...",
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 40),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton(
+                  onPressed: () => _handleAnswer(true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text("예", style: TextStyle(fontSize: 18)),
+                ),
+                ElevatedButton(
+                  onPressed: () => _handleAnswer(false),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent,
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text("아니오", style: TextStyle(fontSize: 18)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 50),
+            LinearProgressIndicator(
+              value: currentStep / 10,
+              backgroundColor: Colors.grey.shade200,
+              color: Colors.blueAccent,
+              minHeight: 8,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            const SizedBox(height: 10),
+            Text("진단 진행도: $currentStep / 10",
+                style: const TextStyle(color: Colors.grey)),
+          ],
         ),
       ),
     );
@@ -194,48 +291,24 @@ class _DiseaseResultPageState extends State<DiseaseResultPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          backgroundColor: const Color(0xFF1E3C72),
-          title: const Text(
-            "질병 결과",
-            style: TextStyle(color: Colors.white),
+      appBar: AppBar(
+        title: const Text("AI 질병 추론", style: TextStyle(color: Colors.white)),
+        backgroundColor: const Color(0xFF1E3C72),
+        centerTitle: true,
+      ),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFE3F2FD), Color(0xFFBBDEFB)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
           ),
         ),
-        body: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF90CAF9), Color(0xFFE3F2FD)],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-          ),
-          child: Center(
-            child: Card(
-              elevation: 6,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              child: Padding(
-                padding: const EdgeInsets.all(30),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Lottie.asset(
-                      "assets/medical_loading.json",
-                      width: 120,
-                      height: 120,
-                      repeat: true,
-                    ),
-                    const SizedBox(height: 20),
-                    const Text(
-                      "결과를 분석하는 중입니다...",
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        )
+        child: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _buildQuestionUI(),
 
+      ),
     );
   }
 }

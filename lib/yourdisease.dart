@@ -568,6 +568,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
                   context,
                   MaterialPageRoute(
                     builder: (context) => DiseaseResultPage(
+                      //체크한 증상데이터랑 입력한 값을 보냄
                       selectedSymptoms: selectedSymptoms.toList(),
                       userInput: widget.userInput,
                     ),
