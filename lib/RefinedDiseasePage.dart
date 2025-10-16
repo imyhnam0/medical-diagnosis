@@ -10,12 +10,15 @@ class RefinedDiseasePage extends StatefulWidget {
   final String predictedDisease; // ✅ DiseaseResultPage에서 받은 질병 이름
   final String userInput;
   final List<String> selectedSymptoms;
+  final List<Map<String, String>> questionHistory; // ✅ 추가
+
 
   const RefinedDiseasePage({
     super.key,
     required this.predictedDisease,
     required this.userInput,
     required this.selectedSymptoms,
+    required this.questionHistory,
   });
 
   @override
@@ -232,7 +235,10 @@ class _RefinedDiseasePageState extends State<RefinedDiseasePage> {
                 builder: (_) => MedicalSummaryPage(
                   userInput: widget.userInput,
                   selectedSymptoms: widget.selectedSymptoms,
-                  answers: const {},
+                  answers: {
+                    for (var item in widget.questionHistory)
+                      item['question'] ?? '질문 없음': item['answer'] ?? '응답 없음',
+                  },
                   predictedDisease: widget.predictedDisease,
                 ),
               ),

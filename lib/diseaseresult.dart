@@ -23,6 +23,7 @@ class _DiseaseResultPageState extends State<DiseaseResultPage> {
   final String apiKey = "AIzaSyCIYlmRYTOdfi_qOtcxHlp046oqZC-3uPI"; // 🔑 Gemini API 키 넣기
   bool isLoading = true;
   bool isFinished = false;
+  Map<String, double> prevProbabilities = {};
 
   List<Map<String, dynamic>> candidateDiseases = [];
   Map<String, double> diseaseProbabilities = {};
@@ -67,14 +68,39 @@ class _DiseaseResultPageState extends State<DiseaseResultPage> {
     await _generateNextQuestion();
     setState(() => isLoading = false);
   }
+  List<Map<String, dynamic>> _getTopPercentDiseases({double percent = 0.3}) {
+    final sorted = diseaseProbabilities.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    final count = (sorted.length * percent).ceil().clamp(1, sorted.length);
+    final topKeys = sorted.take(count).map((e) => e.key).toSet();
+
+    return candidateDiseases
+        .where((d) => topKeys.contains(d["질환명"]))
+        .toList();
+  }
+
 
 
   // ✅ Gemini를 통한 질문 생성
   Future<void> _generateNextQuestion() async {
     currentStep++;
 
+    late final List<Map<String, dynamic>> focusedCandidates;
+
+    if (currentStep <= 5) {
+      // 🔹 질문 1~5: 전체 후보 사용
+      focusedCandidates = candidateDiseases;
+    } else if (currentStep == 6) {
+      // 🔹 질문 6: 확률 상위 30% 질병만 필터링
+      focusedCandidates = _getTopPercentDiseases(percent: 0.3);
+    } else {
+      // 🔹 질문 7부터: 확률이 오른 질병만 사용
+      focusedCandidates = _getIncreasedDiseases();
+    }
+
     // 🔹 Firestore에서 불러온 각 질병의 세부 요인들을 카테고리별로 구조화
-    final remainingDiseasesText = candidateDiseases.map((d) {
+    final remainingDiseasesText = focusedCandidates.map((d) {
       final name = d["질환명"];
       final past = (d["과거 질환 이력"] ?? []).join(", ");
       final social = (d["사회적 이력"] ?? []).join(", ");
@@ -92,8 +118,7 @@ class _DiseaseResultPageState extends State<DiseaseResultPage> {
     final askedTopics = questionHistory.map((q) => q["question"]).join(", ");
 
     final prompt = """
-당신은 임상 의사입니다.
-아래는 환자가 호소한 증상과 Firestore에서 불러온 질병 데이터입니다.
+당신은 전문 의사입니다. 아래는 환자의 증상, 현재까지 남은 질병 후보들, 그리고 각 요인에 따라 분류된 질병 그룹입니다.
 
 [환자 증상]
 ${widget.selectedSymptoms.join(", ")}
@@ -144,6 +169,20 @@ ${questionHistory.map((q) => "Q: ${q["question"]} → A: ${q["answer"]}").join("
     setState(() => currentQuestion = text);
 
   }
+  List<Map<String, dynamic>> _getIncreasedDiseases() {
+    final increasedKeys = diseaseProbabilities.entries.where((e) {
+      final prev = prevProbabilities[e.key] ?? 0;
+      return e.value > prev; // 🔼 이전보다 확률이 상승한 질병만
+    }).map((e) => e.key).toSet();
+
+    final filtered = candidateDiseases
+        .where((d) => increasedKeys.contains(d["질환명"]))
+        .toList();
+
+    // 🔁 상승한 질병이 하나도 없으면 전체 후보 유지
+    return filtered.isEmpty ? candidateDiseases : filtered;
+  }
+
 
   // ✅ 확률 업데이트 (Softmax 스타일, 필드 구분 반영)
   void _updateProbabilities(bool isYes) {
@@ -180,29 +219,31 @@ ${questionHistory.map((q) => "Q: ${q["question"]} → A: ${q["answer"]}").join("
   }
 
 
-  // ✅ 사용자의 응답 처리
-  Future<void> _handleAnswer(bool isYes) async {
+  Future<void> _handleAnswer(bool? isYes) async {
     if (currentQuestion == null) return;
 
+    // ✅ 기록에는 "모르겠어요"도 포함
     questionHistory.add({
       "question": currentQuestion!,
-      "answer": isYes ? "예" : "아니오",
+      "answer": isYes == null ? "모르겠어요" : (isYes ? "예" : "아니오"),
     });
 
-    _updateProbabilities(isYes);
+    // ✅ 모르겠어요면 확률 업데이트 생략
+    if (isYes != null) {
+      prevProbabilities = Map<String, double>.from(diseaseProbabilities);
+      _updateProbabilities(isYes);
+    }
 
     final top = diseaseProbabilities.entries.reduce(
           (a, b) => a.value > b.value ? a : b,
     );
 
-    // 종료 조건: 확률 0.85 이상 또는 10회 초과
-    if (top.value >= 0.85 || currentStep >= 10) {
+    if (top.value >= 0.8 || currentStep >= 10) {
       setState(() {
         isFinished = true;
         finalDisease = top.key;
       });
 
-      // ✅ RefinedDiseasePage로 이동
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -210,18 +251,17 @@ ${questionHistory.map((q) => "Q: ${q["question"]} → A: ${q["answer"]}").join("
             predictedDisease: finalDisease ?? "알 수 없음",
             userInput: widget.userInput,
             selectedSymptoms: widget.selectedSymptoms,
+            questionHistory: questionHistory,
           ),
         ),
       );
-
-
       return;
     }
-
 
     await _generateNextQuestion();
     setState(() {});
   }
+
 
 
   // ✅ 질문 UI
@@ -269,6 +309,16 @@ ${questionHistory.map((q) => "Q: ${q["question"]} → A: ${q["answer"]}").join("
                   ),
                   child: const Text("아니오", style: TextStyle(fontSize: 18)),
                 ),
+                ElevatedButton(
+                  onPressed: () => _handleAnswer(null), // ✅ null로 처리
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey,
+                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text("모르겠어요", style: TextStyle(fontSize: 18)),
+                ),
+
               ],
             ),
             const SizedBox(height: 50),
