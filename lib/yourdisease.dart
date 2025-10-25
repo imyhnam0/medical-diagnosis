@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'diseaseresult.dart';
+import 'aggfactor.dart';
 
 class YourDiseasePage extends StatefulWidget {
   final String userInput;
@@ -193,7 +194,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
     6️⃣ 출력은 예시처럼: "흉통, 두통, 팔꿈치 통증"
     
     사용자 입력:
-    "${input}"
+    "$input"
     
     증상 리스트:
     ${allSymptoms.join(", ")}
@@ -404,6 +405,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
 
 
 
+  @override
   Widget build(BuildContext context) {
     final primaryColor = Colors.blue;
 
@@ -567,7 +569,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => DiseaseResultPage(
+                    builder: (context) => AggfactorPage(
                       //체크한 증상데이터랑 입력한 값을 보냄
                       selectedSymptoms: selectedSymptoms.toList(),
                       userInput: widget.userInput,

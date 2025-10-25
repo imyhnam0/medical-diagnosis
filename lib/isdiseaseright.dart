@@ -365,7 +365,7 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
                   const SizedBox(height: 20),
                   Text(
                     // ✅ 사용자에게 자연스럽게 질문으로 표현
-                    "${_matchedSentence!}",
+                    _matchedSentence!,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 17,

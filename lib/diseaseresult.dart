@@ -129,7 +129,7 @@ $remainingDiseasesText
 이전 질문 및 답변:
 ${questionHistory.map((q) => "Q: ${q["question"]} → A: ${q["answer"]}").join("\n")}
 
-위 질문들에서 이미 다루어진 주제(${askedTopics})와 같은 의미나 단어를 절대 반복하지 마세요.
+위 질문들에서 이미 다루어진 주제($askedTopics)와 같은 의미나 단어를 절대 반복하지 마세요.
 
 다음 조건을 반드시 지키세요:
 1️⃣ 이전 질문에서 이미 다룬 내용은 다시 묻지 않는다.  
