@@ -185,6 +185,8 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
     규칙:
     1️⃣ 사용자의 문장에서 의학적으로 의미 있는 모든 증상을 찾아내세요.  
     2️⃣ "증상 리스트"에 존재하는 항목이 있으면 그대로 사용하세요.  
+    2️⃣ 비슷한 표현이 여러 증상과 연관된다면 **모두 포함하세요.**  
+   (예: "가슴이 아프다" → "흉통, 설명되지 않는 흉통, 갑작스러운 흉통")
     3️⃣ 존재하지 않으면 사용자의 문맥에 맞게 새로운 증상명을 간단하게 만들어 추가하세요.  
        - 예: "머리가 아파요" → "두통"
        - 예: "팔꿈치가 아파요" → "팔꿈치 통증"
@@ -192,7 +194,8 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
     4️⃣ 결과는 쉼표(,)로 구분된 증상명 리스트 형태로만 출력합니다.  
     5️⃣ 불필요한 설명, 문장, 해석은 포함하지 마세요.  
     6️⃣ 출력은 예시처럼: "흉통, 두통, 팔꿈치 통증"
-    
+    규칙:
+      
     사용자 입력:
     "$input"
     
@@ -333,7 +336,18 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         TextButton(
-                          onPressed: () => Navigator.pop(context),
+                          onPressed: () {
+                            Navigator.pop(context); // 팝업 닫기
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AggfactorPage(
+                                  selectedSymptoms: selectedSymptoms.toList(),
+                                  userInput: widget.userInput,
+                                ),
+                              ),
+                            );
+                          },
                           child: const Text(
                             "없습니다",
                             style: TextStyle(color: Colors.grey),

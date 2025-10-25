@@ -261,12 +261,16 @@ class _PastHistoryPageState extends State<PastHistoryPage> {
 
   void _onConfirmBatch() {
     final currentBatch = _getCurrentBatch();
-    final batchAnswers = {for (var h in currentBatch) h: userAnswers[h]};
+    final batchAnswers = {
+      for (var f in currentBatch)
+        predefinedQuestions[f]!: userAnswers[f]
+    };
+
     _updateScores(batchAnswers);
 
     // ✅ 이전 단계의 questionHistory + 현재 단계의 userAnswers 병합
     final updatedHistory = Map<String, String?>.from(widget.questionHistory)
-      ..addAll(userAnswers);
+      ..addAll(batchAnswers);
 
     if ((currentPage + 1) * 5 >= allHistories.length) {
       final sorted = diseaseProbabilities.entries.toList()

@@ -18,15 +18,15 @@ class AggfactorPage extends StatefulWidget {
 }
 
 class _AggfactorPageState extends State<AggfactorPage> {
-  bool isLoading = true;
-  int currentPage = 0;
+  bool isLoading = true; // Firebase에서 데이터 로드 중인지 표시
+  int currentPage = 0; // 현재 진행 중인 질문 페이지 인덱스
 
-  List<String> allAggravatingFactors = [];
-  Map<String, String> predefinedQuestions = {};
-  Map<String, String?> userAnswers = {};
+  List<String> allAggravatingFactors = []; // 모든 악화 요인 리스트
+  Map<String, String> predefinedQuestions = {}; // 악화 요인별 질문 매핑
+  Map<String, String?> userAnswers = {}; // 사용자의 각 악화 요인별 답변 저장
 
-  Map<String, double> diseaseProbabilities = {};
-  List<Map<String, dynamic>> candidateDiseases = [];
+  Map<String, double> diseaseProbabilities = {}; // 각 질병의 점수/확률 저장
+  List<Map<String, dynamic>> candidateDiseases = []; // 현재 증상과 연관된 질병 후보들
 
   @override
   void initState() {
@@ -215,7 +215,6 @@ class _AggfactorPageState extends State<AggfactorPage> {
         } else if (answer == "아니오" && !hasFactor) {
           score *= alpha;
         } else if (answer == "모르겠어요") {
-
           score *= 1.0;
         } else {
           score *= decay;
@@ -234,7 +233,11 @@ class _AggfactorPageState extends State<AggfactorPage> {
 
   void _onConfirmBatch() {
     final currentBatch = _getCurrentBatch();
-    final batchAnswers = {for (var f in currentBatch) f: userAnswers[f]};
+    final batchAnswers = {
+      for (var f in currentBatch)
+        predefinedQuestions[f]!: userAnswers[f]
+    };
+
     _updateScores(batchAnswers);
 
     if ((currentPage + 1) * 5 >= allAggravatingFactors.length) {
@@ -259,7 +262,8 @@ class _AggfactorPageState extends State<AggfactorPage> {
             //사용자가 처음 단계에서 선택한 증상
             selectedSymptoms: widget.selectedSymptoms,
             //사용자가 답한 질문들
-            questionHistory: Map<String, String?>.from(userAnswers),
+            questionHistory: Map<String, String?>.from(userAnswers)
+              ..addAll(batchAnswers),
             diseaseProbabilities: Map<String, double>.from(diseaseProbabilities),
           ),
         ),

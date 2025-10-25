@@ -10,7 +10,7 @@ class RefinedDiseasePage extends StatefulWidget {
   final String predictedDisease; // ✅ DiseaseResultPage에서 받은 질병 이름
   final String userInput;
   final List<String> selectedSymptoms;
-  final List<Map<String, String>> questionHistory; // ✅ 추가
+  final Map<String, String?> questionHistory;// ✅ 추가
 
 
   const RefinedDiseasePage({
@@ -227,36 +227,37 @@ class _RefinedDiseasePageState extends State<RefinedDiseasePage> {
           ),
         ),
         const SizedBox(height: 14),
-        ElevatedButton.icon(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => MedicalSummaryPage(
-                  userInput: widget.userInput,
-                  selectedSymptoms: widget.selectedSymptoms,
-                  answers: {
-                    for (var item in widget.questionHistory)
-                      item['question'] ?? '질문 없음': item['answer'] ?? '응답 없음',
-                  },
-                  predictedDisease: widget.predictedDisease,
-                ),
-              ),
-            );
-          },
-          icon: const Icon(Icons.assignment_outlined, color: Colors.white),
-          label: const Text(
-            "문진표 보기",
-            style: TextStyle(color: Colors.white),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.indigo,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-            minimumSize: const Size(double.infinity, 50),
-          ),
-        ),
+        // ElevatedButton.icon(
+        //   onPressed: () {
+        //     Navigator.push(
+        //       context,
+        //       MaterialPageRoute(
+        //         builder: (_) => MedicalSummaryPage(
+        //           userInput: widget.userInput,
+        //           selectedSymptoms: widget.selectedSymptoms,
+        //           answers: {
+        //             for (var entry in widget.questionHistory.entries)
+        //               entry.key: entry.value ?? '응답 없음',
+        //           },
+        //
+        //           predictedDisease: widget.predictedDisease,
+        //         ),
+        //       ),
+        //     );
+        //   },
+        //   icon: const Icon(Icons.assignment_outlined, color: Colors.white),
+        //   label: const Text(
+        //     "문진표 보기",
+        //     style: TextStyle(color: Colors.white),
+        //   ),
+        //   style: ElevatedButton.styleFrom(
+        //     backgroundColor: Colors.indigo,
+        //     shape: RoundedRectangleBorder(
+        //       borderRadius: BorderRadius.circular(14),
+        //     ),
+        //     minimumSize: const Size(double.infinity, 50),
+        //   ),
+        // ),
         const SizedBox(height: 14),
         OutlinedButton.icon(
           onPressed: () {

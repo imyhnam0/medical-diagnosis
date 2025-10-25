@@ -228,12 +228,16 @@ class _SocialHistoryPageState extends State<SocialHistoryPage> {
 
   void _onConfirmBatch() {
     final currentBatch = _getCurrentBatch();
-    final batchAnswers = {for (var f in currentBatch) f: userAnswers[f]};
+    final batchAnswers = {
+      for (var f in currentBatch)
+        predefinedQuestions[f]!: userAnswers[f]
+    };
+
     _updateScores(batchAnswers);
 
     // ✅ 이전 단계의 questionHistory + 현재 단계의 userAnswers 병합
     final updatedHistory = Map<String, String?>.from(widget.questionHistory)
-      ..addAll(userAnswers);
+      ..addAll(batchAnswers);
 
     if ((currentPage + 1) * 5 >= allSocialFactors.length) {
       final sorted = diseaseProbabilities.entries.toList()
@@ -254,9 +258,7 @@ class _SocialHistoryPageState extends State<SocialHistoryPage> {
             userInput: widget.userInput,
             selectedSymptoms: widget.selectedSymptoms,
             // ✅ questionHistory는 Map<String, String?> → List<Map<String, String>>로 변환
-            questionHistory: updatedHistory.entries
-                .map((e) => {"question": e.key, "answer": e.value ?? "응답 없음"})
-                .toList(),
+            questionHistory: updatedHistory,
           ),
         ),
       );

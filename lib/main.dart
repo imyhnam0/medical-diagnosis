@@ -152,7 +152,7 @@ class HomeBackground extends StatelessWidget {
                 //fetchUniqueAggravatingFactors();
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const ConsentPage()),
+                  MaterialPageRoute(builder: (context) => const YourDiseasePage(userInput: "arbitrary value",)),
                 );
               },
               style: ElevatedButton.styleFrom(

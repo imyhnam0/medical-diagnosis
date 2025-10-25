@@ -264,7 +264,11 @@ class _RiskFactorPageState extends State<RiskFactorPage> {
   /// ✅ 다음 단계로 이동
   void _onConfirmBatch() {
     final currentBatch = _getCurrentBatch();
-    final batchAnswers = {for (var f in currentBatch) f: userAnswers[f]};
+    final batchAnswers = {
+      for (var f in currentBatch)
+        predefinedQuestions[f]!: userAnswers[f]
+    };
+
     _updateScores(batchAnswers);
 
     // 누적 질문 기록
