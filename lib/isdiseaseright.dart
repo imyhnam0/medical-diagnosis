@@ -12,11 +12,12 @@ class IsDiseaseRightPage extends StatefulWidget {
 
 class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
   final TextEditingController _controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   String? _errorMessage;
   bool _isLoading = false;
 
   String? _matchedSentence; // ✅ Gemini가 유사하다고 판단한 문장
-  bool _awaitingUserConfirm = false; // ✅ “예/아니요” 상태 관리
+  bool _awaitingUserConfirm = false; // ✅ "예/아니요" 상태 관리
 
   // ✅ 예시 문장 → 사용자에게 보여줄 질문 텍스트 매핑
   final Map<String, String> symptomToQuestion = {
@@ -286,6 +287,17 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
           _matchedSentence = matchedQuestion;
           _awaitingUserConfirm = true;
         });
+        
+        // AI 분석 결과가 표시되면 자동으로 아래로 스크롤
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollController.hasClients) {
+            _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent,
+              duration: const Duration(milliseconds: 800),
+              curve: Curves.easeInOut,
+            );
+          }
+        });
       } else {
         setState(() {
           _errorMessage = "⚠️ 본 앱은 흉통 관련 증상만 판별이 가능합니다.";
@@ -313,7 +325,7 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
   }
 
 
-  /// ✅ “아니요” 눌렀을 때
+  /// ✅ "아니요" 눌렀을 때
   void _onConfirmNo() {
     setState(() {
       _awaitingUserConfirm = false;
@@ -324,113 +336,474 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
   }
 
   @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenHeight < 700;
+    
+    final primaryColor = const Color(0xFF0F4C75);
+    final secondaryColor = const Color(0xFF3282B8);
+    final accentColor = const Color(0xFFBBE1FA);
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("증상 판별"),
-        backgroundColor: const Color(0xFF1E3C72),
-        foregroundColor: Colors.white,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              primaryColor,
+              secondaryColor,
+              accentColor,
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            stops: const [0.0, 0.6, 1.0],
+          ),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            physics: const BouncingScrollPhysics(),
+            child: Padding(
+              padding: EdgeInsets.all(screenWidth * 0.05),
+              child: Column(
+                children: [
+                  // 상단 앱바
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+                      ),
+                      Expanded(
         child: Column(
           children: [
-            const SizedBox(height: 30),
-            const Text(
-              "현재 느끼는 주요 증상을 입력해주세요.\n입력하신 내용을 바탕으로 흉통 관련 여부를 우선 판별합니다.",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            TextField(
-              controller: _controller,
-              enabled: !_awaitingUserConfirm,
-              decoration: InputDecoration(
-                hintText: "예: 가슴이 답답해요, 숨이 막혀요 등",
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                prefixIcon: const Icon(Icons.monitor_heart),
-              ),
-            ),
-            const SizedBox(height: 25),
-
-            if (_isLoading)
-              const CircularProgressIndicator(color: Colors.blueAccent),
-
-            // ✅ “유사 문장 확인 질문” UI
-            if (_awaitingUserConfirm && _matchedSentence != null)
-              Column(
-                children: [
-                  const SizedBox(height: 20),
-                  Text(
-                    // ✅ 사용자에게 자연스럽게 질문으로 표현
-                    _matchedSentence!,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      ElevatedButton.icon(
-                        onPressed: () => _onConfirmYes(context),
-                        icon: const Icon(Icons.check),
-                        label: const Text("예"),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 30, vertical: 14),
+                            Text(
+                              "AI 증상 판별",
+                              style: TextStyle(
+                                fontSize: isSmallScreen ? 20 : 24,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              "흉통 관련 증상을 정확히 분석합니다",
+                              style: TextStyle(
+                                fontSize: isSmallScreen ? 12 : 14,
+                                color: Colors.white.withOpacity(0.8),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 20),
-                      OutlinedButton.icon(
-                        onPressed: _onConfirmNo,
-                        icon: const Icon(Icons.close),
-                        label: const Text("아니요"),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 30, vertical: 14),
+                      const SizedBox(width: 48), // 뒤로가기 버튼과 균형 맞추기
+                    ],
+                  ),
+                  
+            const SizedBox(height: 30),
+
+                  // 메인 안내 카드
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(isSmallScreen ? 20 : 24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 15,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        // AI 아이콘
+                        Container(
+                          width: isSmallScreen ? 60 : 80,
+                          height: isSmallScreen ? 60 : 80,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [primaryColor, secondaryColor],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: primaryColor.withOpacity(0.3),
+                                blurRadius: 15,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            Icons.psychology,
+                            color: Colors.white,
+                            size: isSmallScreen ? 30 : 40,
+                          ),
+                        ),
+                        
+                        SizedBox(height: isSmallScreen ? 16 : 20),
+                        
+                        Text(
+                          "현재 느끼는 주요 증상을 입력해주세요",
+                          style: TextStyle(
+                            fontSize: isSmallScreen ? 18 : 22,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF1A202C),
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        
+                        SizedBox(height: isSmallScreen ? 8 : 12),
+                        
+                        Text(
+                          "AI가 입력하신 내용을 분석하여\n흉통 관련 증상 여부를 판별합니다",
+                          style: TextStyle(
+                            fontSize: isSmallScreen ? 14 : 16,
+                            color: Colors.grey[600],
+                            height: 1.4,
+                          ),
+              textAlign: TextAlign.center,
+            ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // 증상 입력 섹션
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 15,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 섹션 제목
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.edit_note,
+                              color: primaryColor,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              "증상 입력",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: primaryColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                        
+                        const SizedBox(height: 16),
+                        
+                        // 입력창
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey[50],
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: primaryColor.withOpacity(0.2),
+                              width: 1,
+                            ),
+                          ),
+                          child: TextField(
+              controller: _controller,
+              enabled: !_awaitingUserConfirm,
+                            maxLines: 3,
+              decoration: InputDecoration(
+                              hintText: "예: 가슴이 답답해요, 숨이 막혀요, 심장이 두근거려요",
+                              hintStyle: TextStyle(
+                                color: Colors.grey[400],
+                                fontSize: 14,
+                              ),
+                              prefixIcon: Icon(Icons.favorite, color: primaryColor),
+                border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide.none,
+                              ),
+                              filled: true,
+                              fillColor: Colors.transparent,
+                              contentPadding: const EdgeInsets.all(16),
+                            ),
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 20),
+                        
+                        // 확인 버튼
+                        if (!_awaitingUserConfirm && !_isLoading)
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: primaryColor,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                elevation: 2,
+                              ),
+                              onPressed: () => _onCheckPressed(context),
+                              icon: const Icon(
+                                Icons.auto_awesome,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                              label: const Text(
+                                "AI로 증상 분석하기",
+                                style: TextStyle(
+                                  color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // 로딩 상태
+                  if (_isLoading)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 15,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                    children: [
+                          CircularProgressIndicator(
+                            color: primaryColor,
+                            strokeWidth: 3,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            "AI가 증상을 분석하고 있습니다...",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: primaryColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  // AI 분석 결과 확인 UI
+                  if (_awaitingUserConfirm && _matchedSentence != null)
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.all(isSmallScreen ? 20 : 24),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 15,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                        border: Border.all(
+                          color: Colors.green.withOpacity(0.3),
+                          width: 2,
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          // 성공 아이콘
+                          Container(
+                            width: isSmallScreen ? 50 : 60,
+                            height: isSmallScreen ? 50 : 60,
+                            decoration: BoxDecoration(
+                              color: Colors.green.withOpacity(0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.check_circle,
+                              color: Colors.green,
+                              size: isSmallScreen ? 30 : 36,
+                            ),
+                          ),
+                          
+                          SizedBox(height: isSmallScreen ? 16 : 20),
+                          
+                          Text(
+                            "AI 분석 결과",
+                            style: TextStyle(
+                              fontSize: isSmallScreen ? 18 : 20,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF1A202C),
+                            ),
+                          ),
+                          
+                          SizedBox(height: isSmallScreen ? 12 : 16),
+                          
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.green[50],
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.green.withOpacity(0.2),
+                                width: 1,
+                              ),
+                            ),
+                            child: Text(
+                              _matchedSentence!,
+                              style: TextStyle(
+                                fontSize: isSmallScreen ? 15 : 17,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.green[700],
+                                height: 1.4,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                          
+                          SizedBox(height: isSmallScreen ? 20 : 24),
+                          
+                          Text(
+                            "이 증상이 맞나요?",
+                            style: TextStyle(
+                              fontSize: isSmallScreen ? 14 : 16,
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          
+                          SizedBox(height: isSmallScreen ? 16 : 20),
+                          
+                          // 예/아니요 버튼
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () => _onConfirmYes(context),
+                                  icon: const Icon(Icons.check, color: Colors.white),
+                                  label: const Text(
+                                    "예",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    elevation: 2,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: _onConfirmNo,
+                                  icon: Icon(Icons.close, color: Colors.red[600]),
+                                  label: Text(
+                                    "아니요",
+                                    style: TextStyle(
+                                      color: Colors.red[600],
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    side: BorderSide(color: Colors.red[300]!),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                  ),
                         ),
                       ),
                     ],
                   ),
                 ],
               ),
+                    ),
 
-            if (!_awaitingUserConfirm && !_isLoading)
-              ElevatedButton(
-                onPressed: () => _onCheckPressed(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blueAccent,
-                  foregroundColor: Colors.white,
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                ),
-                child: const Text(
-                  "확인",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ),
+                  const SizedBox(height: 20),
 
-            const SizedBox(height: 20),
-            if (_errorMessage != null)
-              Text(
-                _errorMessage!,
-                style: const TextStyle(
-                  color: Colors.redAccent,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
-                ),
-                textAlign: TextAlign.center,
+                  // 에러 메시지
+                  if (_errorMessage != null)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.red[50],
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.red.withOpacity(0.2),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.warning_amber_rounded,
+                            color: Colors.red[600],
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              _errorMessage!,
+                              style: TextStyle(
+                                color: Colors.red[700],
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  const SizedBox(height: 40),
+                ],
               ),
-          ],
+            ),
+          ),
         ),
       ),
     );

@@ -99,191 +99,427 @@ class _ChatConsultPageState extends State<ChatConsultPage> {
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenHeight < 700;
+    
+    final primaryColor = const Color(0xFF0F4C75);
+    final secondaryColor = const Color(0xFF3282B8);
+    final accentColor = const Color(0xFFBBE1FA);
+
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1E3C72),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context); // 🔹 RefinedDiseasePage로 돌아감
-          },
-        ),
-        title: Text(
-          "AI 상담 (${widget.diseaseName})",
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        centerTitle: true,
-      ),
-      // 🩺 부드러운 의료톤 그라데이션 배경
       body: Container(
-        decoration: const BoxDecoration(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFFE3F2FD), Color(0xFF90CAF9)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+            colors: [
+              primaryColor,
+              secondaryColor,
+              accentColor,
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            stops: const [0.0, 0.6, 1.0],
           ),
         ),
         child: SafeArea(
           child: Column(
             children: [
-              // 상단 질병 카드
-              Padding(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Container(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.85),
-                    borderRadius: BorderRadius.circular(18),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 6,
-                        offset: const Offset(0, 3),
+              // 상단 앱바
+              Container(
+                padding: EdgeInsets.all(screenWidth * 0.05),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+                    ),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          Text(
+                            "AI 의료 상담",
+                            style: TextStyle(
+                              fontSize: isSmallScreen ? 18 : 20,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            widget.diseaseName,
+                            style: TextStyle(
+                              fontSize: isSmallScreen ? 12 : 14,
+                              color: Colors.white.withOpacity(0.8),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.health_and_safety,
-                          color: Color(0xFF1E3C72), size: 28),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          "AI 의료 상담 (${widget.diseaseName})",
-                          style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF1E3C72)),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 48), // 뒤로가기 버튼과 균형 맞추기
+                  ],
                 ),
               ),
-
-              // 메시지 리스트
+              
+              // 메인 채팅 영역
               Expanded(
-                child: ListView.builder(
-                  controller: _scrollController,
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  itemCount: _messages.length,
-                  itemBuilder: (context, index) {
-                    final msg = _messages[index];
-                    final isUser = msg["role"] == "user";
-
-                    return Align(
-                      alignment: isUser
-                          ? Alignment.centerRight
-                          : Alignment.centerLeft,
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(vertical: 6),
-                        padding: const EdgeInsets.all(14),
-                        constraints:
-                        BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+                child: Container(
+                  margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(25),
+                      topRight: Radius.circular(25),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 20,
+                        offset: const Offset(0, -5),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      // 상단 질병 정보 카드
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.all(20),
+                        padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
                         decoration: BoxDecoration(
-                          color: isUser
-                              ? const Color(0xFF1E3C72)
-                              : Colors.white.withOpacity(0.9),
-                          borderRadius: BorderRadius.only(
-                            topLeft: const Radius.circular(18),
-                            topRight: const Radius.circular(18),
-                            bottomLeft: isUser
-                                ? const Radius.circular(18)
-                                : const Radius.circular(0),
-                            bottomRight: isUser
-                                ? const Radius.circular(0)
-                                : const Radius.circular(18),
+                          gradient: LinearGradient(
+                            colors: [primaryColor.withOpacity(0.1), primaryColor.withOpacity(0.05)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black12,
-                              blurRadius: 4,
-                              offset: const Offset(2, 3),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: primaryColor.withOpacity(0.2),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: primaryColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                Icons.psychology,
+                                color: primaryColor,
+                                size: isSmallScreen ? 20 : 24,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "AI 의료 상담",
+                                    style: TextStyle(
+                                      fontSize: isSmallScreen ? 14 : 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: primaryColor,
+                                    ),
+                                  ),
+                                  Text(
+                                    "진단된 질병: ${widget.diseaseName}",
+                                    style: TextStyle(
+                                      fontSize: isSmallScreen ? 12 : 13,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
-                        child: Text(
-                          msg["content"]!,
-                          style: TextStyle(
-                            color: isUser ? Colors.white : Colors.black87,
-                            fontSize: 15,
-                            height: 1.5,
-                          ),
-                        ),
                       ),
-                    );
-                  },
-                ),
-              ),
 
-              if (_isLoading)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 10),
-                  child: CircularProgressIndicator(color: Color(0xFF1E3C72)),
-                ),
+                      // 메시지 리스트
+                      Expanded(
+                        child: _messages.isEmpty
+                            ? Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      width: isSmallScreen ? 60 : 80,
+                                      height: isSmallScreen ? 60 : 80,
+                                      decoration: BoxDecoration(
+                                        color: primaryColor.withOpacity(0.1),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        Icons.chat_bubble_outline,
+                                        color: primaryColor,
+                                        size: isSmallScreen ? 30 : 40,
+                                      ),
+                                    ),
+                                    SizedBox(height: isSmallScreen ? 16 : 20),
+                                    Text(
+                                      "AI에게 질문해보세요",
+                                      style: TextStyle(
+                                        fontSize: isSmallScreen ? 16 : 18,
+                                        fontWeight: FontWeight.w600,
+                                        color: primaryColor,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      "진단 결과에 대해 궁금한 점을\n자유롭게 질문하실 수 있습니다",
+                                      style: TextStyle(
+                                        fontSize: isSmallScreen ? 12 : 14,
+                                        color: Colors.grey[600],
+                                        height: 1.4,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : ListView.builder(
+                                controller: _scrollController,
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                                itemCount: _messages.length,
+                                itemBuilder: (context, index) {
+                                  final msg = _messages[index];
+                                  final isUser = msg["role"] == "user";
 
-              // 입력창
-              Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 6,
-                      offset: const Offset(0, -2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _controller,
-                        decoration: InputDecoration(
-                          hintText: "AI에게 질문을 입력하세요...",
-                          hintStyle: const TextStyle(color: Colors.black38),
-                          filled: true,
-                          fillColor: Colors.grey[100],
-                          contentPadding: const EdgeInsets.symmetric(
-                              vertical: 12, horizontal: 16),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide:
-                            const BorderSide(color: Colors.transparent),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: const BorderSide(
-                                color: Color(0xFF1E3C72), width: 1.4),
+                                  return Container(
+                                    margin: const EdgeInsets.symmetric(vertical: 6),
+                                    child: Row(
+                                      mainAxisAlignment: isUser 
+                                          ? MainAxisAlignment.end 
+                                          : MainAxisAlignment.start,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        if (!isUser) ...[
+                                          Container(
+                                            width: isSmallScreen ? 32 : 36,
+                                            height: isSmallScreen ? 32 : 36,
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: [primaryColor, secondaryColor],
+                                                begin: Alignment.topLeft,
+                                                end: Alignment.bottomRight,
+                                              ),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Icon(
+                                              Icons.psychology,
+                                              color: Colors.white,
+                                              size: isSmallScreen ? 16 : 18,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                        ],
+                                        Flexible(
+                                          child: Container(
+                                            padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+                                            constraints: BoxConstraints(
+                                              maxWidth: screenWidth * 0.7,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              gradient: isUser
+                                                  ? LinearGradient(
+                                                      colors: [primaryColor, secondaryColor],
+                                                      begin: Alignment.topLeft,
+                                                      end: Alignment.bottomRight,
+                                                    )
+                                                  : null,
+                                              color: isUser ? null : Colors.grey[50],
+                                              borderRadius: BorderRadius.only(
+                                                topLeft: const Radius.circular(18),
+                                                topRight: const Radius.circular(18),
+                                                bottomLeft: isUser
+                                                    ? const Radius.circular(18)
+                                                    : const Radius.circular(4),
+                                                bottomRight: isUser
+                                                    ? const Radius.circular(4)
+                                                    : const Radius.circular(18),
+                                              ),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.black.withOpacity(0.1),
+                                                  blurRadius: 8,
+                                                  offset: const Offset(0, 2),
+                                                ),
+                                              ],
+                                            ),
+                                            child: Text(
+                                              msg["content"]!,
+                                              style: TextStyle(
+                                                color: isUser ? Colors.white : Colors.grey[800],
+                                                fontSize: isSmallScreen ? 14 : 15,
+                                                height: 1.4,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        if (isUser) ...[
+                                          const SizedBox(width: 8),
+                                          Container(
+                                            width: isSmallScreen ? 32 : 36,
+                                            height: isSmallScreen ? 32 : 36,
+                                            decoration: BoxDecoration(
+                                              color: Colors.grey[300],
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Icon(
+                                              Icons.person,
+                                              color: Colors.grey[600],
+                                              size: isSmallScreen ? 16 : 18,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                      ),
+
+                      // 로딩 상태
+                      if (_isLoading)
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: isSmallScreen ? 32 : 36,
+                                height: isSmallScreen ? 32 : 36,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [primaryColor, secondaryColor],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.psychology,
+                                  color: Colors.white,
+                                  size: isSmallScreen ? 16 : 18,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[100],
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    SizedBox(
+                                      width: isSmallScreen ? 16 : 20,
+                                      height: isSmallScreen ? 16 : 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: primaryColor,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      "AI가 답변을 준비 중입니다...",
+                                      style: TextStyle(
+                                        fontSize: isSmallScreen ? 12 : 14,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        onSubmitted: (value) => sendMessage(value),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: () => sendMessage(_controller.text),
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF1E3C72),
-                          shape: BoxShape.circle,
+
+                      // 입력창
+                      Container(
+                        padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          border: Border(
+                            top: BorderSide(
+                              color: Colors.grey.withOpacity(0.2),
+                              width: 1,
+                            ),
+                          ),
                         ),
-                        child: const Icon(Icons.send,
-                            color: Colors.white, size: 20),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[50],
+                                  borderRadius: BorderRadius.circular(25),
+                                  border: Border.all(
+                                    color: primaryColor.withOpacity(0.2),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: TextField(
+                                  controller: _controller,
+                                  maxLines: null,
+                                  decoration: InputDecoration(
+                                    hintText: "AI에게 질문을 입력하세요...",
+                                    hintStyle: TextStyle(
+                                      color: Colors.grey[400],
+                                      fontSize: isSmallScreen ? 14 : 15,
+                                    ),
+                                    border: InputBorder.none,
+                                    contentPadding: EdgeInsets.symmetric(
+                                      horizontal: isSmallScreen ? 16 : 20,
+                                      vertical: isSmallScreen ? 12 : 16,
+                                    ),
+                                  ),
+                                  onSubmitted: (value) => sendMessage(value),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Container(
+                              width: isSmallScreen ? 48 : 52,
+                              height: isSmallScreen ? 48 : 52,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [primaryColor, secondaryColor],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: primaryColor.withOpacity(0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(26),
+                                  onTap: () => sendMessage(_controller.text),
+                                  child: Icon(
+                                    Icons.send_rounded,
+                                    color: Colors.white,
+                                    size: isSmallScreen ? 20 : 22,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ],
