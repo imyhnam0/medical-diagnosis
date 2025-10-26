@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'diseaseresult.dart';
 import 'aggfactor.dart';
 
 class YourDiseasePage extends StatefulWidget {
@@ -245,6 +244,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
   }
   void _showConfirmDialog(BuildContext context, List<String> matchedSymptoms) {
     final TextEditingController popupController = TextEditingController();
+    final primaryColor = const Color(0xFF2E7D8A);
 
     showDialog(
       context: context,
@@ -254,17 +254,24 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
           builder: (context, setStateDialog) {
             return Dialog(
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(24),
               ),
               child: Container(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(24),
                   gradient: LinearGradient(
-                    colors: [Colors.blue.shade50, Colors.white],
+                    colors: [Colors.white, const Color(0xFFF8FAFC)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: primaryColor.withOpacity(0.1),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -272,113 +279,163 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
                   children: [
                     // 제목 + 아이콘
                     Row(
-                      children: const [
-                        Icon(Icons.check_circle, color: Colors.blue, size: 28),
-                        SizedBox(width: 8),
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(Icons.check_circle, color: primaryColor, size: 24),
+                        ),
+                        const SizedBox(width: 12),
                         Text(
                           "증상 확인",
                           style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                            color: primaryColor,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
 
                     // 선택된 증상 리스트
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
-                        borderRadius: BorderRadius.circular(12),
+                        color: primaryColor.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: primaryColor.withOpacity(0.2)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: selectedSymptoms.map((symptom) {
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.check, color: Colors.blue, size: 18),
-                                const SizedBox(width: 6),
-                                Text(symptom, style: const TextStyle(fontSize: 15)),
-                              ],
+                        children: [
+                          Text(
+                            "선택된 증상 (${selectedSymptoms.length}개)",
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: primaryColor,
                             ),
-                          );
-                        }).toList(),
+                          ),
+                          const SizedBox(height: 8),
+                          ...selectedSymptoms.map((symptom) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 3),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.check_circle, color: primaryColor, size: 16),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      symptom, 
+                                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ],
                       ),
                     ),
 
-
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
 
                     // 추가 입력창
                     TextField(
                       controller: popupController,
                       decoration: InputDecoration(
                         hintText: "추가 증상이 있나요?",
-                        prefixIcon: const Icon(Icons.add_comment, color: Colors.blue),
+                        hintStyle: TextStyle(color: Colors.grey[400]),
+                        prefixIcon: Icon(Icons.add_comment, color: primaryColor),
                         filled: true,
                         fillColor: Colors.white,
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.blue.shade200),
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: primaryColor.withOpacity(0.3)),
                         ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: Colors.grey.withOpacity(0.3)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: primaryColor, width: 2),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                       ),
                     ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
 
                     // 버튼 영역
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pop(context); // 팝업 닫기
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => AggfactorPage(
-                                  selectedSymptoms: selectedSymptoms.toList(),
-                                  userInput: widget.userInput,
-                                ),
+                        Expanded(
+                          child: TextButton(
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                side: BorderSide(color: Colors.grey.withOpacity(0.3)),
                               ),
-                            );
-                          },
-                          child: const Text(
-                            "없습니다",
-                            style: TextStyle(color: Colors.grey),
+                            ),
+                            onPressed: () {
+                              Navigator.pop(context); // 팝업 닫기
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => AggfactorPage(
+                                    selectedSymptoms: selectedSymptoms.toList(),
+                                    userInput: widget.userInput,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Text(
+                              "없습니다",
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: primaryColor,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              elevation: 2,
                             ),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 12),
-                          ),
-                          onPressed: () async {
-                            final newInput = popupController.text.trim();
-                            if (newInput.isNotEmpty) {
-                              final newMatches = await _getMatchedSymptoms(newInput);
-                              if (newMatches.isNotEmpty) {
-                                setState(() {
-                                  selectedSymptoms.addAll(newMatches);
-                                });
-                                setStateDialog(() {}); // 팝업 UI 갱신
-                                popupController.clear();
+                            onPressed: () async {
+                              final newInput = popupController.text.trim();
+                              if (newInput.isNotEmpty) {
+                                final newMatches = await _getMatchedSymptoms(newInput);
+                                if (newMatches.isNotEmpty) {
+                                  setState(() {
+                                    selectedSymptoms.addAll(newMatches);
+                                  });
+                                  setStateDialog(() {}); // 팝업 UI 갱신
+                                  popupController.clear();
+                                }
                               }
-                            }
-                          },
-                          child: const Text(
-                            "추가 입력",
-                            style: TextStyle(color: Colors.white, fontSize: 16),
+                            },
+                            child: const Text(
+                              "추가 입력",
+                              style: TextStyle(
+                                color: Colors.white, 
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -421,160 +478,359 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = Colors.blue;
+    final primaryColor = const Color(0xFF2E7D8A); // 의료 테마 색상
+    final secondaryColor = const Color(0xFF4A90A4);
+    final accentColor = const Color(0xFF7FB3D3);
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         centerTitle: true,
-        title: const Text("증상 입력 / 선택", style: TextStyle(fontWeight: FontWeight.bold,color: Colors.white,)),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
         flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFF1E3C72),
-          ),
-        ),
-      ),
-      body: Column(
-        children: [
-          // 입력창
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: const InputDecoration(
-                      hintText: "현재 느끼는 증상을 자세하게 입력해주세요",
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1E3C72),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8)),
-                  ),
-                  onPressed: () => _matchSymptoms(_controller.text),
-                  child: const Text("확인", style: TextStyle(color: Colors.white)),
-                ),
-              ],
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [primaryColor, secondaryColor],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
           ),
-          // 증상 체크리스트
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              children: symptomCategories.entries.map((entry) {
+        ),
+        title: const Text(
+          "증상 입력 / 선택", 
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+            fontSize: 20,
+            letterSpacing: 0.5,
+          ),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            // AI 기반 증상 매칭 시스템 안내
+            
+
+            // 증상 입력 섹션
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+                border: Border.all(
+                  color: primaryColor.withOpacity(0.1),
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 섹션 제목
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.edit_note,
+                        color: primaryColor,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        "증상 입력",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: primaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // 입력창
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey[50],
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: primaryColor.withOpacity(0.2),
+                        width: 1,
+                      ),
+                    ),
+                    child: TextField(
+                      controller: _controller,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        hintText: "예: 가슴이 아프고 숨이 차요, 어지럽고 피곤해요",
+                        hintStyle: TextStyle(
+                          color: Colors.grey[400],
+                          fontSize: 14,
+                        ),
+                        prefixIcon: Icon(Icons.medical_services, color: primaryColor),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
+                        filled: true,
+                        fillColor: Colors.transparent,
+                        contentPadding: const EdgeInsets.all(16),
+                      ),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 16),
+                  
+                  // 확인 버튼
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        elevation: 2,
+                      ),
+                      onPressed: () => _matchSymptoms(_controller.text),
+                      icon: const Icon(
+                        Icons.auto_awesome,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      label: const Text(
+                        "AI로 증상 분석하기",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // 증상 카테고리 선택 안내
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: Colors.blue.withOpacity(0.2),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.list_alt,
+                    color: Colors.blue[600],
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      "또는 아래 카테고리에서 직접 선택하세요",
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.blue[700],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+            
+            // 증상 체크리스트
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                children: symptomCategories.entries.map((entry) {
                 final hasSelected = entry.value.any((s) => selectedSymptoms.contains(s));
 
-                return Card(
-                  elevation: 4,
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: hasSelected 
+                          ? primaryColor.withOpacity(0.15)
+                          : Colors.grey.withOpacity(0.1),
+                        blurRadius: hasSelected ? 12 : 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                    border: hasSelected 
+                      ? Border.all(color: primaryColor.withOpacity(0.3), width: 1.5)
+                      : null,
+                  ),
                   child: ExpansionTile(
-                    leading: Icon(
-                      hasSelected ? Icons.check_circle : Icons.circle_outlined,
-                      color: hasSelected ? primaryColor : Colors.grey,
+                    tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    childrenPadding: const EdgeInsets.only(bottom: 8),
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: hasSelected 
+                          ? primaryColor.withOpacity(0.1)
+                          : Colors.grey.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        hasSelected ? Icons.check_circle : Icons.medical_information,
+                        color: hasSelected ? primaryColor : Colors.grey[600],
+                        size: 24,
+                      ),
                     ),
                     title: Text(
                       entry.key,
                       style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: hasSelected ? primaryColor : Colors.black87,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                        color: hasSelected ? primaryColor : Colors.grey[800],
                       ),
                     ),
-                    subtitle: Text(
-                      symptomCategoryDescriptions[entry.key] ?? "",
-                      style: const TextStyle(color: Colors.grey, fontSize: 13),
+                    subtitle: Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        symptomCategoryDescriptions[entry.key] ?? "",
+                        style: TextStyle(
+                          color: Colors.grey[600], 
+                          fontSize: 13,
+                          height: 1.3,
+                        ),
+                      ),
                     ),
                     children: entry.value.map((symptom) {
                       final isSelected = selectedSymptoms.contains(symptom);
                       final hasDescription = symptomDescriptions.containsKey(symptom);
-                      bool showDescription = false; // ✅ 개별 증상별 표시 상태 관리
 
-                      return StatefulBuilder(
-                        builder: (context, setStateInner) {
-                          return Column(
-                            children: [
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: isSelected ? Colors.blue[50] : null,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: CheckboxListTile(
-                                  activeColor: primaryColor,
-                                  title: Text(symptom),
-                                  value: isSelected,
-                                  onChanged: (checked) {
-                                    setState(() {
-                                      if (checked!) {
-                                        selectedSymptoms.add(symptom);
-                                      } else {
-                                        selectedSymptoms.remove(symptom);
-                                      }
-                                    });
-                                  },
+                      return Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isSelected 
+                            ? primaryColor.withOpacity(0.08)
+                            : Colors.grey.withOpacity(0.03),
+                          borderRadius: BorderRadius.circular(12),
+                          border: isSelected 
+                            ? Border.all(color: primaryColor.withOpacity(0.2), width: 1)
+                            : null,
+                        ),
+                        child: Column(
+                          children: [
+                            CheckboxListTile(
+                              activeColor: primaryColor,
+                              checkColor: Colors.white,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                              title: Text(
+                                symptom,
+                                style: TextStyle(
+                                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                  color: isSelected ? primaryColor : Colors.grey[800],
+                                  fontSize: 15,
                                 ),
                               ),
-                              // ✅ 설명 보기 버튼 (해당 증상에 설명이 있을 때만)
-                              if (hasDescription)
-                                Padding(
-                                  padding: const EdgeInsets.only(left: 50, right: 10, bottom: 8),
-                                  child: Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: TextButton.icon(
-                                      onPressed: () {
-                                        setStateInner(() => showDescription = !showDescription);
-                                      },
-                                      icon: Icon(
-                                        showDescription ? Icons.expand_less : Icons.info_outline,
-                                        size: 18,
-                                        color: Colors.blueAccent,
-                                      ),
-                                      label: Text(
-                                        showDescription ? "설명 닫기" : "설명 보기",
-                                        style: const TextStyle(color: Colors.blueAccent),
-                                      ),
-                                    ),
+                              value: isSelected,
+                              onChanged: (checked) {
+                                setState(() {
+                                  if (checked!) {
+                                    selectedSymptoms.add(symptom);
+                                  } else {
+                                    selectedSymptoms.remove(symptom);
+                                  }
+                                });
+                              },
+                            ),
+                            // ✅ 설명이 있으면 바로 표시
+                            if (hasDescription)
+                              Container(
+                                margin: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue[50],
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: accentColor.withOpacity(0.3)),
+                                ),
+                                child: Text(
+                                  symptomDescriptions[symptom] ?? "",
+                                  style: TextStyle(
+                                    color: Colors.grey[700], 
+                                    fontSize: 12,
+                                    height: 1.4,
                                   ),
                                 ),
-                              if (showDescription)
-                                Padding(
-                                  padding: const EdgeInsets.only(left: 60, right: 20, bottom: 12),
-                                  child: Text(
-                                    symptomDescriptions[symptom] ?? "",
-                                    style: const TextStyle(color: Colors.black87, fontSize: 14),
-                                  ),
-                                ),
-                            ],
-                          );
-                        },
+                              ),
+                          ],
+                        ),
                       );
                     }).toList(),
 
                   ),
                 );
               }).toList(),
+              ),
             ),
-          ),
-        ],
+            
+            const SizedBox(height: 100), // 하단 네비게이션 바 공간 확보
+          ],
+        ),
       ),
       bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.1),
+                blurRadius: 10,
+                offset: const Offset(0, -2),
+              ),
+            ],
+          ),
           child: SizedBox(
             width: double.infinity,
-            height: 50,
+            height: 56,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                elevation: 6,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: selectedSymptoms.isEmpty ? 0 : 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 padding: EdgeInsets.zero,
+                backgroundColor: selectedSymptoms.isEmpty 
+                  ? Colors.grey[300] 
+                  : null,
               ).copyWith(
-                backgroundColor: WidgetStateProperty.resolveWith<Color?>((states) => null),
+                backgroundColor: WidgetStateProperty.resolveWith<Color?>((states) {
+                  if (selectedSymptoms.isEmpty) return Colors.grey[300];
+                  return null;
+                }),
               ),
               onPressed: selectedSymptoms.isEmpty
                   ? null
@@ -591,20 +847,54 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
                   ),
                 );
               },
-              child: Ink(
-                decoration: const BoxDecoration(
-                  color: Color(0xFF1E3C72),
-                ),
-                child: Container(
-
-                  alignment: Alignment.center,
-                  child: const Text(
-                    "확인",
-                    style: TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+              child: selectedSymptoms.isEmpty
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.grey[600], size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        "증상을 선택해주세요",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  )
+                : Ink(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [primaryColor, secondaryColor],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Container(
+                      alignment: Alignment.center,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.arrow_forward,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            "다음 단계로 (${selectedSymptoms.length}개 선택됨)",
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              ),
             ),
           ),
         ),

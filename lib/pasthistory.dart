@@ -26,15 +26,48 @@ class PastHistoryPage extends StatefulWidget {
 }
 
 class _PastHistoryPageState extends State<PastHistoryPage> {
+  final ScrollController _scrollController = ScrollController();
   bool isLoading = true;
   int currentPage = 0;
 
   List<String> allHistories = [];
   Map<String, String> predefinedQuestions = {}; // ✅ 과거 이력 → 질문 매핑
-  Map<String, String?> userAnswers = {};
+  Map<String, int?> userAnswers = {}; // int? (예/아니요/모르겠어요: 1/0/-1)
 
   Map<String, double> diseaseProbabilities = {};
   List<Map<String, dynamic>> candidateDiseases = [];
+
+  // 전체 파트 정보 (진행 상황 표시용)
+  final List<Map<String, dynamic>> allParts = [
+    {
+      'name': '악화요인 분석',
+      'icon': Icons.psychology,
+      'description': '증상을 악화시키는 요인들을 분석합니다',
+      'color': Color(0xFF2E7D8A),
+      'completed': true, // 이미 완료됨
+    },
+    {
+      'name': '과거질환 이력',
+      'icon': Icons.history,
+      'description': '과거 질환 이력을 확인합니다',
+      'color': Color(0xFF4A90A4),
+      'completed': false, // 현재 진행 중
+    },
+    {
+      'name': '위험요인',
+      'icon': Icons.warning,
+      'description': '질병 위험요인을 평가합니다',
+      'color': Color(0xFF7FB3D3),
+      'completed': false,
+    },
+    {
+      'name': '사회적 이력',
+      'icon': Icons.people,
+      'description': '사회적 환경과 생활습관을 확인합니다',
+      'color': Color(0xFF9BB5C8),
+      'completed': false,
+    },
+  ];
 
   @override
   void initState() {
@@ -216,11 +249,7 @@ class _PastHistoryPageState extends State<PastHistoryPage> {
     setState(() => isLoading = false);
   }
 
-  /// ✅ 점수 업데이트
-  void _updateScores(Map<String, String?> batchAnswers) {
-    const double alpha = 1.25;
-    const double decay = 0.9;
-
+  void _updateScores(Map<String, int?> batchAnswers) {
     print("\n🧩 [과거 질환 이력 반영 결과]");
     for (var d in candidateDiseases) {
       final name = d["질환명"];
@@ -234,23 +263,34 @@ class _PastHistoryPageState extends State<PastHistoryPage> {
         if (answer == null) continue;
 
         final hasHistory = histories.contains(history);
-        if (answer == "예" && hasHistory) {
-          score *= alpha;
+        double weight;
 
-        } else if (answer == "아니오" && !hasHistory) {
-          score *= alpha;
-
-        } else if (answer == "모르겠어요") {
-
-          score *= 1.0;
+        if (answer == 1) {
+          // 예라고 답한 경우
+          if (hasHistory) {
+            weight = 1.25; // 포함하는 것에 1.25
+          } else {
+            weight = 0.9;  // 포함하지 않는 것에 0.9
+          }
+        } else if (answer == 0) {
+          // 아니요라고 답한 경우
+          if (hasHistory) {
+            weight = 0.9;  // 포함하는 것에 0.9
+          } else {
+            weight = 1.25; // 포함하지 않는 것에 1.25
+          }
+        } else if (answer == -1) {
+          // 모르겠어요라고 답한 경우
+          weight = 1.0; // 변화 없음
         } else {
-          score *= decay;
-
+          weight = 1.0; // 기본값
         }
+
+        score *= weight;
       }
 
       diseaseProbabilities[name] = score;
-      print("➡️ ${name}: ${prev.toStringAsFixed(3)} → ${score.toStringAsFixed(3)}");
+      print("➡️ $name: ${prev.toStringAsFixed(3)} → ${score.toStringAsFixed(3)}");
     }
 
     print("\n📊 현재 전체 질병 확률 상태:");
@@ -258,6 +298,7 @@ class _PastHistoryPageState extends State<PastHistoryPage> {
       print("- $key: ${value.toStringAsFixed(4)}");
     });
   }
+
 
   void _onConfirmBatch() {
     final currentBatch = _getCurrentBatch();
@@ -268,22 +309,39 @@ class _PastHistoryPageState extends State<PastHistoryPage> {
 
     _updateScores(batchAnswers);
 
-    // ✅ 이전 단계의 questionHistory + 현재 단계의 userAnswers 병합
-    final updatedHistory = Map<String, String?>.from(widget.questionHistory)
-      ..addAll(batchAnswers);
+    // ✅ 현재 배치의 답변만 업데이트 (최종 단계에서 모든 답변을 누적)
+
 
     if ((currentPage + 1) * 5 >= allHistories.length) {
+      // 과거질환 이력 파트 완료 - 위험요인 페이지로 이동
       final sorted = diseaseProbabilities.entries.toList()
         ..sort((a, b) => b.value.compareTo(a.value));
 
-      // ✅ 상위 50% 질병만 다음 단계로 전달
+      // ✅ 상위 40% 질병만 다음 단계로 전달
       final cutoff = (sorted.length * 0.4).ceil();
       final topDiseases = sorted.take(cutoff).map((e) => e.key).toList();
 
-      print("\n🏁 모든 질문 완료! 상위 ${topDiseases.length}개 질병:");
+      print("\n🏁 과거질환 이력 분석 완료! 상위 ${topDiseases.length}개 질병:");
       for (var dis in topDiseases) {
         print("- $dis (${diseaseProbabilities[dis]!.toStringAsFixed(4)})");
       }
+
+      // ✅ 모든 과거질환 이력 질문과 답변을 누적
+      final allPastHistoryAnswers = <String, String?>{};
+      for (var history in allHistories) {
+        final question = predefinedQuestions[history];
+        final answer = userAnswers[history];
+        if (question != null && answer != null) {
+          allPastHistoryAnswers[question] = answer.toString();
+        }
+      }
+
+      // ✅ 이전 단계의 questionHistory + 현재 단계의 모든 답변 병합
+      final finalHistory = Map<String, String?>.from(widget.questionHistory)
+        ..addAll(allPastHistoryAnswers);
+
+      print("📋 과거질환 이력 단계에서 총 ${allPastHistoryAnswers.length}개 질문 완료");
+      print("📋 누적된 총 질문 수: ${finalHistory.length}개");
 
       Navigator.pushReplacement(
         context,
@@ -292,13 +350,24 @@ class _PastHistoryPageState extends State<PastHistoryPage> {
             topDiseases: topDiseases, // ✅ 리스트 그대로 전달
             userInput: widget.userInput,
             selectedSymptoms: widget.selectedSymptoms,
-            questionHistory: updatedHistory, // ✅ 병합된 질문기록 전달
+            questionHistory: finalHistory, // ✅ 모든 질문 누적된 히스토리 전달
             diseaseProbabilities: Map<String, double>.from(diseaseProbabilities),
           ),
         ),
       );
     } else {
       setState(() => currentPage++);
+      
+      // 다음 질문으로 넘어갈 때 상단으로 스크롤
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            0.0,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOut,
+          );
+        }
+      });
     }
   }
 
@@ -311,79 +380,621 @@ class _PastHistoryPageState extends State<PastHistoryPage> {
   }
 
   @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  String _getAnswerText(int answer) {
+    switch (answer) {
+      case 1:
+        return "예";
+      case 0:
+        return "아니요";
+      case -1:
+        return "모르겠어요";
+      default:
+        return "";
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final primaryColor = const Color(0xFF4A90A4); // 과거질환 이력 색상
+    final secondaryColor = const Color(0xFF7FB3D3);
+
     if (isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        backgroundColor: const Color(0xFFF8FAFC),
+        appBar: AppBar(
+          centerTitle: true,
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          flexibleSpace: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [primaryColor, secondaryColor],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+          ),
+          title: const Text(
+            "과거질환 이력", 
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+              fontSize: 20,
+              letterSpacing: 0.5,
+            ),
+          ),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Lottie.asset("assets/medical_loading.json", width: 120),
+              const SizedBox(height: 24),
+              Text(
+                "과거 이력을 분석하고 있습니다...",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: primaryColor,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "잠시만 기다려주세요",
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     final currentBatch = _getCurrentBatch();
     final progress = ((currentPage * 5) + currentBatch.length) / allHistories.length;
+    final currentQuestionNumber = (currentPage * 5) + 1;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text("history of disorder", style: TextStyle(color: Colors.white)),
-        backgroundColor: const Color(0xFF1E3C72),
         centerTitle: true,
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFE8F5E9), Color(0xFFC8E6C9)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [primaryColor, secondaryColor],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
           ),
         ),
-        child: SingleChildScrollView(
+        title: const Text(
+          "과거질환 이력", 
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+            fontSize: 20,
+            letterSpacing: 0.5,
+          ),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: SingleChildScrollView(
+          controller: _scrollController,
           padding: const EdgeInsets.all(20),
           child: Column(
             children: [
-              Lottie.asset("assets/medical_loading.json", width: 100),
-              Text("질문 ${(currentPage + 1)} / ${(allHistories.length / 5).ceil()}",
-                  style: const TextStyle(fontSize: 18)),
-              const SizedBox(height: 10),
-              ...currentBatch.map((history) {
+            // 상단 진행 상황 카드
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.white, const Color(0xFFF0F8FF)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: primaryColor.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  // 현재 파트 정보
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: allParts[1]['color'].withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          allParts[1]['icon'],
+                          color: allParts[1]['color'],
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            allParts[1]['name'],
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: allParts[1]['color'],
+                            ),
+                          ),
+                          Text(
+                            allParts[1]['description'],
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 16),
+                  
+                  // 전체 진행률 정보
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        "질문 $currentQuestionNumber / ${allHistories.length}",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[800],
+                        ),
+                      ),
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 12),
+                  
+                  // 100% 게이지바
+                  Container(
+                    height: 16,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      color: Colors.grey[300], // 안 채워진 부분은 회색
+                      border: Border.all(color: Colors.grey[400]!, width: 1),
+                    ),
+                    child: Stack(
+                      children: [
+                        // 전체 배경 (회색)
+                        Container(
+                          width: double.infinity,
+                          height: double.infinity,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            color: Colors.grey[300],
+                          ),
+                        ),
+                        // 채워진 부분 (그라데이션)
+                        FractionallySizedBox(
+                          alignment: Alignment.centerLeft,
+                          widthFactor: progress,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              gradient: LinearGradient(
+                                colors: [allParts[1]['color'], secondaryColor],
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: allParts[1]['color'].withOpacity(0.3),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        // 퍼센트 텍스트 (게이지바 위에 표시)
+                        if (progress > 0.15) // 15% 이상일 때만 텍스트 표시
+                          Positioned(
+                            left: 4,
+                            top: 0,
+                            bottom: 0,
+                            child: Center(
+                              child: Text(
+                                "${(progress * 100).toStringAsFixed(0)}%",
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                  shadows: [
+                                    Shadow(
+                                      color: Colors.black45,
+                                      blurRadius: 3,
+                                      offset: Offset(0, 1),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 8),
+                  
+                  // 파트별 진행 상황
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: allParts.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final part = entry.value;
+                      final isCurrentPart = index == 1; // 과거질환 이력 파트가 현재 파트
+                      final isCompleted = part['completed'] as bool;
+                      
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isCurrentPart 
+                            ? part['color'].withOpacity(0.1)
+                            : isCompleted 
+                              ? Colors.green.withOpacity(0.1)
+                              : Colors.grey.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isCurrentPart 
+                              ? part['color']
+                              : isCompleted 
+                                ? Colors.green
+                                : Colors.grey,
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isCompleted ? Icons.check : part['icon'],
+                              size: 12,
+                              color: isCurrentPart 
+                                ? part['color']
+                                : isCompleted 
+                                  ? Colors.green
+                                  : Colors.grey,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              part['name'].split(' ')[0], // 첫 번째 단어만 표시
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                                color: isCurrentPart 
+                                  ? part['color']
+                                  : isCompleted 
+                                    ? Colors.green
+                                    : Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 24),
+            // 질문 카드들
+            ...currentBatch.asMap().entries.map((entry) {
+              final index = entry.key;
+              final history = entry.value;
                 final question = predefinedQuestions[history] ?? "$history 병력이 있으신가요?";
-                return Card(
-                  margin: const EdgeInsets.symmetric(vertical: 8),
+              final isAnswered = userAnswers[history] != null;
+              final questionNumber = currentQuestionNumber + index;
+              
+              return Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: isAnswered 
+                        ? (userAnswers[history] == 1
+                            ? Colors.green.withOpacity(0.15)
+                            : userAnswers[history] == 0
+                                ? Colors.red.withOpacity(0.15)
+                                : Colors.orange.withOpacity(0.15))
+                        : Colors.grey.withOpacity(0.1),
+                      blurRadius: isAnswered ? 12 : 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                  border: isAnswered 
+                    ? Border.all(
+                        color: userAnswers[history] == 1
+                            ? Colors.green.withOpacity(0.3)
+                            : userAnswers[history] == 0
+                                ? Colors.red.withOpacity(0.3)
+                                : Colors.orange.withOpacity(0.3), 
+                        width: 1.5
+                      )
+                    : null,
+                ),
                   child: Padding(
-                    padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(question, style: const TextStyle(fontSize: 16)),
-                        const SizedBox(height: 10),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: ["예", "아니오", "모르겠어요"].map((ans) {
-                            return ChoiceChip(
-                              label: Text(ans),
-                              selected: userAnswers[history] == ans,
-                              onSelected: (_) {
-                                setState(() => userAnswers[history] = ans);
-                              },
-                            );
-                          }).toList(),
+                      // 질문 텍스트
+                      Row(
+                        children: [
+                          // 질문 번호
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: allParts[1]['color'].withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              "Q$questionNumber",
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: allParts[1]['color'],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                          question,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey[800],
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      
+                      const SizedBox(height: 20),
+                      
+                      // 5점 척도 선택 UI
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.grey[200]!),
+                        ),
+                        child: Column(
+                          children: [
+                            // 예/아니요/모르겠어요 버튼들
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                // 예 버튼
+                                GestureDetector(
+                                  onTap: () => setState(() => userAnswers[history] = 1),
+                                  child: Container(
+                                    width: 70,
+                                    height: 50,
+                                    decoration: BoxDecoration(
+                                      color: userAnswers[history] == 1
+                                          ? Colors.green
+                                          : Colors.green.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(25),
+                                      border: Border.all(
+                                        color: userAnswers[history] == 1
+                                            ? Colors.green
+                                            : Colors.green.withOpacity(0.3),
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        "예",
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: userAnswers[history] == 1
+                                              ? Colors.white
+                                              : Colors.green,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                
+                                // 아니요 버튼
+                                GestureDetector(
+                                  onTap: () => setState(() => userAnswers[history] = 0),
+                                  child: Container(
+                                    width: 70,
+                                    height: 50,
+                                    decoration: BoxDecoration(
+                                      color: userAnswers[history] == 0
+                                          ? Colors.red
+                                          : Colors.red.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(25),
+                                      border: Border.all(
+                                        color: userAnswers[history] == 0
+                                            ? Colors.red
+                                            : Colors.red.withOpacity(0.3),
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        "아니요",
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: userAnswers[history] == 0
+                                              ? Colors.white
+                                              : Colors.red,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                
+                                // 모르겠어요 버튼
+                                GestureDetector(
+                                  onTap: () => setState(() => userAnswers[history] = -1),
+                                  child: Container(
+                                    width: 70,
+                                    height: 50,
+                                    decoration: BoxDecoration(
+                                      color: userAnswers[history] == -1
+                                          ? Colors.orange
+                                          : Colors.orange.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(25),
+                                      border: Border.all(
+                                        color: userAnswers[history] == -1
+                                            ? Colors.orange
+                                            : Colors.orange.withOpacity(0.3),
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        "모르겠어요",
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: userAnswers[history] == -1
+                                              ? Colors.white
+                                              : Colors.orange,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            
+                            const SizedBox(height: 8),
+                            
+                            // 선택된 값 표시
+                            if (userAnswers[history] != null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: userAnswers[history] == 1
+                                      ? Colors.green.withOpacity(0.1)
+                                      : userAnswers[history] == 0
+                                          ? Colors.red.withOpacity(0.1)
+                                          : Colors.orange.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  _getAnswerText(userAnswers[history]!),
+                                  style: TextStyle(
+                                    color: userAnswers[history] == 1
+                                        ? Colors.green
+                                        : userAnswers[history] == 0
+                                            ? Colors.red
+                                            : Colors.orange,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                         ),
                       ],
                     ),
                   ),
                 );
               }).toList(),
-              const SizedBox(height: 20),
-              ElevatedButton(
+
+            const SizedBox(height: 32),
+            
+            // 하단 확인 버튼
+            Container(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  padding: EdgeInsets.zero,
+                ),
                 onPressed: _onConfirmBatch,
-                child: const Text("확인", style: TextStyle(fontSize: 18, color: Colors.black)),
+                child: Ink(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [primaryColor, secondaryColor],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Container(
+                    alignment: Alignment.center,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.arrow_forward,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          (currentPage + 1) * 5 >= allHistories.length
+                            ? "다음 파트로"
+                            : "다음 질문으로",
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-              const SizedBox(height: 10),
-              LinearProgressIndicator(
-                value: progress,
-                color: Colors.green,
-                backgroundColor: Colors.white,
-                minHeight: 6,
-              ),
-              Text("진행도 ${(progress * 100).toStringAsFixed(1)}%"),
-            ],
-          ),
+            ),
+            
+            const SizedBox(height: 20),
+          ],
         ),
       ),
     );
