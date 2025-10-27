@@ -242,8 +242,20 @@ class _PastHistoryPageState extends State<PastHistoryPage> {
     print("✅ 중복 제거된 과거 질환 이력 개수: ${allHistorySet.length}");
 
 
-    // ✅ 미리 정의된 질문이 있는 항목만 사용
-    allHistories = allHistorySet.where((h) => predefinedQuestions.containsKey(h)).toList();
+    // ✅ 미리 정의된 질문이 있는 항목만 사용 (@가 있는 키는 @를 제거한 값으로 비교)
+    allHistories = allHistorySet.where((h) {
+      // 직접 키가 있는지 확인
+      if (predefinedQuestions.containsKey(h)) {
+        return true;
+      }
+      // @가 있는 키들 중에서 @를 제거한 값과 일치하는지 확인
+      for (String key in predefinedQuestions.keys) {
+        if (key.startsWith('@') && key.substring(1) == h) {
+          return true;
+        }
+      }
+      return false;
+    }).toList();
     print("🎯 실제 질문으로 사용할 항목 수: ${allHistories.length}");
 
     setState(() => isLoading = false);
@@ -258,11 +270,25 @@ class _PastHistoryPageState extends State<PastHistoryPage> {
       final histories = d["과거 질환 이력"] as List<String>;
 
       for (var entry in batchAnswers.entries) {
-        final history = entry.key;
+        final questionText = entry.key; // 질문 텍스트
         final answer = entry.value;
         if (answer == null) continue;
 
-        final hasHistory = histories.contains(history);
+        // 질문 텍스트에서 원본 키를 찾기
+        String? originalKey;
+        for (var key in predefinedQuestions.keys) {
+          if (predefinedQuestions[key] == questionText) {
+            originalKey = key;
+            break;
+          }
+        }
+        
+        if (originalKey == null) continue;
+
+        // originalKey는 predefinedQuestions의 키(예: "@암"), histories는 Firestore의 값들(예: "암")
+        // @가 있는 키는 @를 제거한 값으로 비교
+        final historyToCheck = originalKey.startsWith('@') ? originalKey.substring(1) : originalKey;
+        final hasHistory = histories.contains(historyToCheck);
         double weight;
 
         if (answer == 1) {
@@ -302,10 +328,27 @@ class _PastHistoryPageState extends State<PastHistoryPage> {
 
   void _onConfirmBatch() {
     final currentBatch = _getCurrentBatch();
-    final batchAnswers = {
-      for (var f in currentBatch)
-        predefinedQuestions[f]!: userAnswers[f]
-    };
+    final batchAnswers = <String, int?>{};
+    
+    for (var f in currentBatch) {
+      // Firestore의 원본 값(f)에 대응하는 predefinedQuestions 키를 찾기
+      String? questionKey;
+      if (predefinedQuestions.containsKey(f)) {
+        questionKey = f;
+      } else {
+        // @가 있는 키들 중에서 @를 제거한 값과 일치하는지 확인
+        for (String key in predefinedQuestions.keys) {
+          if (key.startsWith('@') && key.substring(1) == f) {
+            questionKey = key;
+            break;
+          }
+        }
+      }
+      
+      if (questionKey != null) {
+        batchAnswers[predefinedQuestions[questionKey]!] = userAnswers[f];
+      }
+    }
 
     _updateScores(batchAnswers);
 
@@ -329,10 +372,26 @@ class _PastHistoryPageState extends State<PastHistoryPage> {
       // ✅ 모든 과거질환 이력 질문과 답변을 누적
       final allPastHistoryAnswers = <String, String?>{};
       for (var history in allHistories) {
-        final question = predefinedQuestions[history];
-        final answer = userAnswers[history];
-        if (question != null && answer != null) {
-          allPastHistoryAnswers[question] = answer.toString();
+        // Firestore의 원본 값(history)에 대응하는 predefinedQuestions 키를 찾기
+        String? questionKey;
+        if (predefinedQuestions.containsKey(history)) {
+          questionKey = history;
+        } else {
+          // @가 있는 키들 중에서 @를 제거한 값과 일치하는지 확인
+          for (String key in predefinedQuestions.keys) {
+            if (key.startsWith('@') && key.substring(1) == history) {
+              questionKey = key;
+              break;
+            }
+          }
+        }
+        
+        if (questionKey != null) {
+          final question = predefinedQuestions[questionKey];
+          final answer = userAnswers[history];
+          if (question != null && answer != null) {
+            allPastHistoryAnswers[question] = answer.toString();
+          }
         }
       }
 
@@ -716,7 +775,24 @@ class _PastHistoryPageState extends State<PastHistoryPage> {
             ...currentBatch.asMap().entries.map((entry) {
               final index = entry.key;
               final history = entry.value;
-                final question = predefinedQuestions[history] ?? "$history 병력이 있으신가요?";
+              
+              // Firestore의 원본 값(history)에 대응하는 predefinedQuestions 키를 찾기
+              String? questionKey;
+              if (predefinedQuestions.containsKey(history)) {
+                questionKey = history;
+              } else {
+                // @가 있는 키들 중에서 @를 제거한 값과 일치하는지 확인
+                for (String key in predefinedQuestions.keys) {
+                  if (key.startsWith('@') && key.substring(1) == history) {
+                    questionKey = key;
+                    break;
+                  }
+                }
+              }
+              
+              final question = questionKey != null 
+                  ? predefinedQuestions[questionKey]! 
+                  : "$history 병력이 있으신가요?";
               final isAnswered = userAnswers[history] != null;
               final questionNumber = currentQuestionNumber + index;
               

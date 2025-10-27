@@ -213,9 +213,20 @@ class _SocialHistoryPageState extends State<SocialHistoryPage> {
     print("✅ 중복 제거된 사회적 이력 개수: ${allSocialSet.length}");
 
 
-    // ✅ 미리 정의된 질문이 있는 항목만 사용
-    allSocialFactors =
-        allSocialSet.where((s) => predefinedQuestions.containsKey(s)).toList();
+    // ✅ 미리 정의된 질문이 있는 항목만 사용 (@가 있는 키는 @를 제거한 값으로 비교)
+    allSocialFactors = allSocialSet.where((s) {
+      // 직접 키가 있는지 확인
+      if (predefinedQuestions.containsKey(s)) {
+        return true;
+      }
+      // @가 있는 키들 중에서 @를 제거한 값과 일치하는지 확인
+      for (String key in predefinedQuestions.keys) {
+        if (key.startsWith('@') && key.substring(1) == s) {
+          return true;
+        }
+      }
+      return false;
+    }).toList();
     print("🎯 실제 질문으로 사용할 항목 수: ${allSocialFactors.length}");
 
     setState(() => isLoading = false);
@@ -239,14 +250,28 @@ class _SocialHistoryPageState extends State<SocialHistoryPage> {
       final social = d["사회적 이력"] as List<String>;
 
       for (var entry in batchAnswers.entries) {
-        final factor = entry.key;
+        final questionText = entry.key; // 질문 텍스트
         final answer = entry.value;
         if (answer == null) continue;
 
-        final hasFactor = social.contains(factor);
+        // 질문 텍스트에서 원본 키를 찾기
+        String? originalKey;
+        for (var key in predefinedQuestions.keys) {
+          if (predefinedQuestions[key] == questionText) {
+            originalKey = key;
+            break;
+          }
+        }
+        
+        if (originalKey == null) continue;
+
+        // originalKey는 predefinedQuestions의 키(예: "@흡연"), social은 Firestore의 값들(예: "흡연")
+        // @가 있는 키는 @를 제거한 값으로 비교
+        final factorToCheck = originalKey.startsWith('@') ? originalKey.substring(1) : originalKey;
+        final hasFactor = social.contains(factorToCheck);
         double weight;
 
-        if (_isYesNoQuestion(factor)) {
+        if (_isYesNoQuestion(originalKey)) {
           // 예/아니요/모르겠어요 질문 처리 (1: 예, 0: 아니요, -1: 모르겠어요)
           if (answer == 1) {
             // 예라고 답한 경우
@@ -294,10 +319,27 @@ class _SocialHistoryPageState extends State<SocialHistoryPage> {
 
   void _onConfirmBatch() {
     final currentBatch = _getCurrentBatch();
-    final batchAnswers = {
-      for (var f in currentBatch)
-        predefinedQuestions[f]!: userAnswers[f]
-    };
+    final batchAnswers = <String, int?>{};
+    
+    for (var f in currentBatch) {
+      // Firestore의 원본 값(f)에 대응하는 predefinedQuestions 키를 찾기
+      String? questionKey;
+      if (predefinedQuestions.containsKey(f)) {
+        questionKey = f;
+      } else {
+        // @가 있는 키들 중에서 @를 제거한 값과 일치하는지 확인
+        for (String key in predefinedQuestions.keys) {
+          if (key.startsWith('@') && key.substring(1) == f) {
+            questionKey = key;
+            break;
+          }
+        }
+      }
+      
+      if (questionKey != null) {
+        batchAnswers[predefinedQuestions[questionKey]!] = userAnswers[f];
+      }
+    }
 
     _updateScores(batchAnswers);
 
@@ -316,10 +358,26 @@ class _SocialHistoryPageState extends State<SocialHistoryPage> {
       // ✅ 모든 사회적 이력 질문과 답변을 누적
       final allSocialHistoryAnswers = <String, String?>{};
       for (var social in allSocialFactors) {
-        final question = predefinedQuestions[social];
-        final answer = userAnswers[social];
-        if (question != null && answer != null) {
-          allSocialHistoryAnswers[question] = answer.toString();
+        // Firestore의 원본 값(social)에 대응하는 predefinedQuestions 키를 찾기
+        String? questionKey;
+        if (predefinedQuestions.containsKey(social)) {
+          questionKey = social;
+        } else {
+          // @가 있는 키들 중에서 @를 제거한 값과 일치하는지 확인
+          for (String key in predefinedQuestions.keys) {
+            if (key.startsWith('@') && key.substring(1) == social) {
+              questionKey = key;
+              break;
+            }
+          }
+        }
+        
+        if (questionKey != null) {
+          final question = predefinedQuestions[questionKey];
+          final answer = userAnswers[social];
+          if (question != null && answer != null) {
+            allSocialHistoryAnswers[question] = answer.toString();
+          }
         }
       }
 
@@ -716,7 +774,24 @@ class _SocialHistoryPageState extends State<SocialHistoryPage> {
             ...currentBatch.asMap().entries.map((entry) {
               final index = entry.key;
               final risk = entry.value;
-              final question = predefinedQuestions[risk] ?? "$risk 관련 사회적 이력이 있으신가요?";
+              
+              // Firestore의 원본 값(risk)에 대응하는 predefinedQuestions 키를 찾기
+              String? questionKey;
+              if (predefinedQuestions.containsKey(risk)) {
+                questionKey = risk;
+              } else {
+                // @가 있는 키들 중에서 @를 제거한 값과 일치하는지 확인
+                for (String key in predefinedQuestions.keys) {
+                  if (key.startsWith('@') && key.substring(1) == risk) {
+                    questionKey = key;
+                    break;
+                  }
+                }
+              }
+              
+              final question = questionKey != null 
+                  ? predefinedQuestions[questionKey]! 
+                  : "$risk 관련 사회적 이력이 있으신가요?";
               final isAnswered = userAnswers[risk] != null;
               final questionNumber = currentQuestionNumber + index;
 
@@ -728,7 +803,7 @@ class _SocialHistoryPageState extends State<SocialHistoryPage> {
                   boxShadow: [
                     BoxShadow(
                       color: isAnswered
-                          ? (_isYesNoQuestion(risk)
+                          ? (_isYesNoQuestion(questionKey ?? "")
                               ? (userAnswers[risk] == 1
                                   ? Colors.green.withOpacity(0.15)
                                   : userAnswers[risk] == 0
@@ -742,13 +817,13 @@ class _SocialHistoryPageState extends State<SocialHistoryPage> {
                   ],
                   border: isAnswered
                       ? Border.all(
-                          color: _isYesNoQuestion(risk)
+                          color: _isYesNoQuestion(questionKey ?? "")
                               ? (userAnswers[risk] == 1
                                   ? Colors.green.withOpacity(0.3)
                                   : userAnswers[risk] == 0
                                       ? Colors.red.withOpacity(0.3)
                                       : Colors.orange.withOpacity(0.3))
-                              : allParts[3]['color'].withOpacity(0.3), 
+                              : allParts[3]['color'].withOpacity(0.3),
                           width: 1.5
                         )
                       : null,
@@ -804,7 +879,7 @@ class _SocialHistoryPageState extends State<SocialHistoryPage> {
                         ),
                         child: Column(
                           children: [
-                            if (_isYesNoQuestion(risk)) ...[
+                            if (_isYesNoQuestion(questionKey ?? "")) ...[
                               // 예/아니요/모르겠어요 버튼들
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -981,7 +1056,7 @@ class _SocialHistoryPageState extends State<SocialHistoryPage> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                 decoration: BoxDecoration(
-                                  color: _isYesNoQuestion(risk)
+                                  color: _isYesNoQuestion(questionKey ?? "")
                                       ? (userAnswers[risk] == 1
                                           ? Colors.green.withOpacity(0.1)
                                           : userAnswers[risk] == 0
@@ -993,7 +1068,7 @@ class _SocialHistoryPageState extends State<SocialHistoryPage> {
                                 child: Text(
                                   _getAnswerText(userAnswers[risk]!),
                                   style: TextStyle(
-                                    color: _isYesNoQuestion(risk)
+                                    color: _isYesNoQuestion(questionKey ?? "")
                                         ? (userAnswers[risk] == 1
                                             ? Colors.green
                                             : userAnswers[risk] == 0

@@ -197,6 +197,7 @@ class _SymptomSelectPageState extends State<SymptomSelectPage>
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text("${item['title']} 판별은 곧 추가될 예정입니다."),
+                                        duration: Duration(seconds: 1),
                                         backgroundColor: primaryColor,
                                         behavior: SnackBarBehavior.floating,
                                         shape: RoundedRectangleBorder(
