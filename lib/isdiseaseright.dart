@@ -4,7 +4,9 @@ import 'package:http/http.dart' as http;
 import 'yourdisease.dart';
 
 class IsDiseaseRightPage extends StatefulWidget {
-  const IsDiseaseRightPage({super.key});
+  final Map<String, String>? personalInfo;
+  
+  const IsDiseaseRightPage({super.key, this.personalInfo});
 
   @override
   State<IsDiseaseRightPage> createState() => _IsDiseaseRightPageState();
@@ -18,100 +20,6 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
 
   String? _matchedSentence; // ✅ Gemini가 유사하다고 판단한 문장
   bool _awaitingUserConfirm = false; // ✅ "예/아니요" 상태 관리
-
-  // ✅ 예시 문장 → 사용자에게 보여줄 질문 텍스트 매핑
-  final Map<String, String> symptomToQuestion = {
-    "가슴이 아파요": "가슴에 통증이 있으신가요?",
-    "가슴이 짓눌리는 느낌이에요": "가슴이 눌리거나 짓누르는 느낌이 있으신가요?",
-    "가슴이 쿡쿡 쑤셔요": "가슴을 쿡쿡 찌르는 듯한 통증이 있으신가요?",
-    "가슴이 무거워요": "가슴이 무겁게 느껴지시나요?",
-    "가슴이 조여요": "가슴이 조이는 느낌이 있으신가요?",
-    "가슴이 터질 것 같아요": "가슴이 터질 듯한 통증을 느끼시나요?",
-    "가슴이 타는 것 같아요": "가슴이 화끈거리거나 타는 느낌이 있으신가요?",
-    "가슴이 찢어질 것 같아요": "가슴이 찢어지는 듯한 통증이 있으신가요?",
-    "가슴이 따가워요": "가슴이 따갑게 아프신가요?",
-    "바늘로 찌르는 느낌이에요": "가슴이 바늘로 찌르는 듯한 느낌이 드시나요?",
-    "쥐어짜는 듯해요": "가슴을 쥐어짜는 듯한 통증이 있으신가요?",
-    "가슴이 화끈거려요": "가슴이 화끈거리거나 뜨겁게 느껴지시나요?",
-    "가슴이 얼얼해요": "가슴이 얼얼하거나 저린 느낌이 있으신가요?",
-    "가슴이 벌어질 것 같아요": "가슴이 벌어질 듯한 느낌이 드시나요?",
-    "가슴이 뜨거워요": "가슴이 뜨겁게 달아오르는 느낌이 있으신가요?",
-    "심장이 쿵쿵 뛰어요": "심장이 빠르게 뛰거나 두근거리시나요?",
-    "가슴이 벌렁거려요": "가슴이 벌렁거리거나 심장이 불안정하게 뛰시나요?",
-    "심장이 불규칙해요": "심장 박동이 불규칙하게 느껴지시나요?",
-    "숨 쉴 때 가슴이 아파요": "숨을 쉴 때 가슴에 통증이 느껴지시나요?",
-    "기침하면 가슴이 아파요": "기침할 때 가슴이 아프신가요?",
-    "운동하고 나면 아파요": "운동 후에 가슴 통증이 생기시나요?",
-    "스트레스 받으면 아파요": "스트레스를 받을 때 가슴이 아프신가요?",
-    "식사 후에 아파요": "식사 후 가슴이 아프거나 더부룩하신가요?",
-    "가슴이 조여서 숨이 안 쉬어져요": "가슴이 조여서 숨쉬기 힘드신가요?",
-    "가슴이 울렁거려요": "가슴이 울렁거리거나 속이 메스꺼우신가요?",
-    "가슴이 답답해요": "가슴이 답답하거나 숨이 막히는 느낌이 있으신가요?",
-    "심장이 멎을 것 같아요": "심장이 멎을 듯한 불안감이나 두려움을 느끼시나요?",
-    "숨이 막혀요": "숨이 막히거나 답답하게 느껴지시나요?",
-    "가슴이 무언가 걸린 것 같아요": "가슴에 뭔가 걸린 듯한 이물감이 있으신가요?",
-    "계단 오르면 가슴이 아파요": "계단을 오를 때 가슴에 통증이 있으신가요?",
-    "가만히 있어도 아파요": "가만히 있을 때도 가슴이 아프신가요?",
-    "누우면 아파요": "누워 있을 때 가슴 통증이 생기시나요?",
-    "앉아있기 힘들어요": "가슴이 불편해서 앉아있기 힘드신가요?",
-    "왼쪽 가슴이 아파요": "왼쪽 가슴 부위에 통증이 있으신가요?",
-    "오른쪽 가슴이 아파요": "오른쪽 가슴 부위에 통증이 있으신가요?",
-    "중앙이 아파요": "가슴 중앙 부위에 통증이 있으신가요?",
-    "팔로 통증이 퍼져요": "가슴 통증이 팔로 퍼지시나요?",
-    "턱까지 아파요": "가슴 통증이 턱까지 퍼지시나요?",
-    "등까지 아파요": "가슴 통증이 등 쪽까지 번지시나요?",
-    "숨 쉴 때 통증이 심해져요": "숨을 쉴 때 통증이 더 심해지시나요?",
-    "심장 쪽이 욱신거려요": "심장 부위가 욱신거리게 아프신가요?",
-    "기운이 없어요": "최근에 기운이 없거나 쉽게 피로해지시나요?",
-    "어지러워요": "어지러움이나 균형감 저하가 있으신가요?",
-    "토할 것 같아요": "메스꺼움이나 구토감이 있으신가요?",
-    "메스꺼워요": "속이 메스껍거나 구역질이 나시나요?",
-    "식은땀이 나요": "갑자기 식은땀이 나거나 땀이 많이 나시나요?",
-    "숨이 가빠요": "숨이 차거나 호흡이 가빠지시나요?",
-    "숨을 크게 쉬기 어려워요": "숨을 깊게 쉬기가 힘드신가요?",
-    "날카로운 통증이에요": "가슴에 날카로운 통증이 느껴지시나요?",
-    "찌릿한 통증이에요": "가슴에 찌릿한 전기 오는 듯한 통증이 있으신가요?",
-    "화끈거려요": "가슴이 화끈거리거나 뜨거운 느낌이 있으신가요?",
-    "심장이 덜컥 내려앉는 느낌이에요": "심장이 덜컥 내려앉는 듯한 느낌이 있으신가요?",
-    "심장 박동이 느껴져요": "심장 박동이 강하게 느껴지시나요?",
-    "맥이 빨라요": "맥박이 빠르게 뛰는 느낌이 있으신가요?",
-    "맥이 느려요": "맥박이 느리게 뛰거나 약하게 느껴지시나요?",
-    "피곤해요": "요즘 피로감이 심하게 느껴지시나요?",
-    "죽을 것 같아요": "생명이 위태롭다고 느껴질 정도로 불안하시나요?",
-    "생명 위협 느껴요": "생명이 위험하다고 느껴질 때가 있으신가요?",
-    "병원 가야 할 것 같아요": "지금 증상 때문에 병원에 가야 할 것 같다고 느끼시나요?",
-    "차가운 땀이 나요": "식은땀이나 차가운 땀이 나시나요?",
-    "공기가 안 통해요": "숨이 막혀 공기가 통하지 않는 느낌이 드시나요?",
-    "한숨 쉬고 싶어요": "답답해서 자꾸 한숨을 쉬고 싶으신가요?",
-    "심장이 조여요": "심장이 조이는 듯한 통증을 느끼시나요?",
-    "계속 뭔가 불편해요": "가슴이 계속 불편하거나 찝찝하게 느껴지시나요?",
-    "불쾌감이 있어요": "가슴 부위에 불쾌감이나 이상감이 있으신가요?",
-    "움직이기 힘들어요": "몸을 움직이기 힘들거나 가슴이 불편하신가요?",
-    "숨이 차요": "숨이 차거나 호흡이 짧게 느껴지시나요?",
-    "눌리는 느낌이에요": "가슴이 눌리는 듯한 느낌이 드시나요?",
-    "압박감이 있어요": "가슴에 압박감이나 조이는 느낌이 있으신가요?",
-    "밤에 통증이 심해져요": "밤에 가슴 통증이 더 심해지시나요?",
-    "아침에 더 아파요": "아침에 통증이 더 심하게 느껴지시나요?",
-    "몸을 구부리면 아파요": "몸을 구부릴 때 가슴이 아프신가요?",
-    "긴장하면 아파요": "긴장하거나 불안할 때 가슴이 아프신가요?",
-    "감기 후에 아파요": "감기 후에 가슴 통증이 생기셨나요?",
-    "깜짝 놀랄 만큼 아파요": "갑자기 심하게 아프셔서 놀라셨나요?",
-    "증상이 반복돼요": "가슴 통증이 반복적으로 나타나시나요?",
-    "통증이 오락가락해요": "가슴 통증이 있다가 없어지기를 반복하시나요?",
-    "약을 먹어도 안 나아요": "약을 먹어도 증상이 나아지지 않으신가요?",
-    "가슴이 먹먹해요": "가슴이 먹먹하거나 답답하게 느껴지시나요?",
-    "가슴에 무언가 눌린 느낌": "가슴에 뭔가 눌린 듯한 느낌이 있으신가요?",
-    "가슴이 전기가 오는 것 같아요": "가슴에 전기가 오는 듯한 느낌이 드시나요?",
-    "심장 부위에 통증이 있어요": "심장 부위에 통증이 있으신가요?",
-    "숨을 참고 있어야 해요": "가슴이 아파서 숨을 참고 있게 되시나요?",
-    "가슴에 맥이 튀어요": "가슴에서 맥이 튀는 듯한 느낌이 드시나요?",
-    "화나면 아파요": "화가 날 때 가슴이 아프신가요?",
-    "무서울 때 가슴이 아파요": "무서울 때 가슴이 아프거나 두근거리시나요?",
-    "불안하면 아파요": "불안할 때 가슴이 아프거나 조여오시나요?",
-    "식도가 아픈 것 같아요": "식도나 목 부위에 통증이 느껴지시나요?",
-    "삼킬 때 아파요": "음식을 삼킬 때 가슴이나 목이 아프신가요?",
-    "등 쪽으로 퍼지는 통증": "가슴 통증이 등 쪽으로 번지는 느낌이 있으신가요?",
-  };
 
 
 
@@ -247,12 +155,17 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       final text = data["candidates"][0]["content"]["parts"][0]["text"].trim();
+      
+      // AI 출력값 print
+      print("🤖 AI 응답: $text");
 
       try {
         final jsonResponse = jsonDecode(text);
+        print("📊 파싱된 JSON: $jsonResponse");
         return jsonResponse;
-      } catch (_) {
+      } catch (e) {
         debugPrint("⚠️ Gemini 응답 파싱 실패: $text");
+        debugPrint("⚠️ 파싱 오류: $e");
         return {"result": "FALSE"};
       }
     } else {
@@ -278,32 +191,52 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
 
     try {
       final result = await checkChestPain(input);
+      print("🔍 checkChestPain 결과: $result");
+      
       if (result["result"] == "TRUE") {
-        final similar = result["similar"];
-        debugPrint("✅ 유사한 문장: $similar"); // ✅ 콘솔 출력 (print 용도)
-        final matchedQuestion = symptomToQuestion[similar];
-
-        setState(() {
-          _matchedSentence = matchedQuestion;
-          _awaitingUserConfirm = true;
-        });
+        print("✅ 흉통 관련 증상으로 판단됨");
+        print("📝 유사한 문장: ${result["similar"]}");
         
-        // AI 분석 결과가 표시되면 자동으로 아래로 스크롤
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (_scrollController.hasClients) {
-            _scrollController.animateTo(
-              _scrollController.position.maxScrollExtent,
-              duration: const Duration(milliseconds: 800),
-              curve: Curves.easeInOut,
-            );
-          }
-        });
+        // 흉통 관련 증상이면 바로 YourDiseasePage로 이동
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => YourDiseasePage(
+              userInput: input,
+              personalInfo: widget.personalInfo,
+            ),
+          ),
+        );
       } else {
-        setState(() {
-          _errorMessage = "⚠️ 본 앱은 흉통 관련 증상만 판별이 가능합니다.";
-        });
+        print("❌ 흉통 관련이 아닌 것으로 판단됨");
+        
+        // 팝업으로 메시지 표시
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Colors.orange[600]),
+                  const SizedBox(width: 8),
+                  const Text('알림'),
+                ],
+              ),
+              content: const Text('흉통관련 질환이 아닙니다.'),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('확인'),
+                ),
+              ],
+            );
+          },
+        );
       }
     } catch (e) {
+      print("💥 오류 발생: $e");
       setState(() {
         _errorMessage = "서버 오류가 발생했습니다: $e";
       });
@@ -346,7 +279,7 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenHeight < 700;
-    
+
     final primaryColor = const Color(0xFF0F4C75);
     final secondaryColor = const Color(0xFF3282B8);
     final accentColor = const Color(0xFFBBE1FA);
@@ -368,13 +301,16 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
           ),
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            controller: _scrollController,
-            physics: const BouncingScrollPhysics(),
-            child: Padding(
-              padding: EdgeInsets.all(screenWidth * 0.05),
-              child: Column(
-                children: [
+          child: Stack(
+            children: [
+              // 기존 스크롤 가능한 내용
+              SingleChildScrollView(
+                controller: _scrollController,
+                physics: const BouncingScrollPhysics(),
+                child: Padding(
+                  padding: EdgeInsets.all(screenWidth * 0.05),
+                  child: Column(
+                    children: [
                   // 상단 앱바
                   Row(
                     children: [
@@ -407,8 +343,14 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
                       const SizedBox(width: 48), // 뒤로가기 버튼과 균형 맞추기
                     ],
                   ),
-                  
-            const SizedBox(height: 30),
+
+                  const SizedBox(height: 20),
+
+                  // 개인정보 카드 (개인정보가 있을 때만 표시)
+                  if (widget.personalInfo != null) ...[
+                    _buildPersonalInfoCard(widget.personalInfo!, isSmallScreen, primaryColor),
+                    const SizedBox(height: 20),
+                  ],
 
                   // 메인 안내 카드
                   Container(
@@ -452,9 +394,9 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
                             size: isSmallScreen ? 30 : 40,
                           ),
                         ),
-                        
+
                         SizedBox(height: isSmallScreen ? 16 : 20),
-                        
+
                         Text(
                           "현재 느끼는 주요 증상을 입력해주세요",
                           style: TextStyle(
@@ -464,9 +406,9 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
                           ),
                           textAlign: TextAlign.center,
                         ),
-                        
+
                         SizedBox(height: isSmallScreen ? 8 : 12),
-                        
+
                         Text(
                           "AI가 입력하신 내용을 분석하여\n흉통 관련 증상 여부를 판별합니다",
                           style: TextStyle(
@@ -519,9 +461,9 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
                             ),
                           ],
                         ),
-                        
+
                         const SizedBox(height: 16),
-                        
+
                         // 입력창
                         Container(
                           decoration: BoxDecoration(
@@ -553,9 +495,9 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
                             ),
                           ),
                         ),
-                        
+
                         const SizedBox(height: 20),
-                        
+
                         // 확인 버튼
                         if (!_awaitingUserConfirm && !_isLoading)
                           SizedBox(
@@ -590,41 +532,6 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
                   ),
 
                   const SizedBox(height: 20),
-
-                  // 로딩 상태
-                  if (_isLoading)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 15,
-                            offset: const Offset(0, 5),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                    children: [
-                          CircularProgressIndicator(
-                            color: primaryColor,
-                            strokeWidth: 3,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            "AI가 증상을 분석하고 있습니다...",
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: primaryColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
 
                   // AI 분석 결과 확인 UI
                   if (_awaitingUserConfirm && _matchedSentence != null)
@@ -662,9 +569,9 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
                               size: isSmallScreen ? 30 : 36,
                             ),
                           ),
-                          
+
                           SizedBox(height: isSmallScreen ? 16 : 20),
-                          
+
                           Text(
                             "AI 분석 결과",
                             style: TextStyle(
@@ -673,9 +580,9 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
                               color: const Color(0xFF1A202C),
                             ),
                           ),
-                          
+
                           SizedBox(height: isSmallScreen ? 12 : 16),
-                          
+
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
@@ -697,9 +604,9 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
                               textAlign: TextAlign.center,
                             ),
                           ),
-                          
+
                           SizedBox(height: isSmallScreen ? 20 : 24),
-                          
+
                           Text(
                             "이 증상이 맞나요?",
                             style: TextStyle(
@@ -708,9 +615,9 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
                               fontWeight: FontWeight.w500,
                             ),
                           ),
-                          
+
                           SizedBox(height: isSmallScreen ? 16 : 20),
-                          
+
                           // 예/아니요 버튼
                           Row(
                             children: [
@@ -804,7 +711,158 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
               ),
             ),
           ),
+
+              // 로딩 오버레이 (화면 중앙)
+              if (_isLoading)
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.black.withOpacity(0.3), // 반투명 배경
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 15,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircularProgressIndicator(
+                              color: const Color(0xFF0F4C75),
+                              strokeWidth: 3,
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              "AI가 증상을 분석하고 있습니다...",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF0F4C75),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
+
+      ),
+    );
+  }
+
+  /// 개인정보 카드 위젯
+  Widget _buildPersonalInfoCard(Map<String, String> personalInfo, bool isSmallScreen, Color primaryColor) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+        border: Border.all(
+          color: primaryColor.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 헤더
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.person_outline,
+                  color: primaryColor,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                "입력된 개인정보",
+                style: TextStyle(
+                  fontSize: isSmallScreen ? 16 : 18,
+                  fontWeight: FontWeight.w700,
+                  color: primaryColor,
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // 개인정보 항목들
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              _buildInfoChip("나이", "${personalInfo['age']}세", Icons.cake, primaryColor),
+              _buildInfoChip("몸무게", "${personalInfo['weight']}kg", Icons.monitor_weight, primaryColor),
+              _buildInfoChip("성별", personalInfo['gender']!, Icons.person, primaryColor),
+              _buildInfoChip("음주", personalInfo['drinking']!, Icons.local_drink, primaryColor),
+              _buildInfoChip("흡연", personalInfo['smoking']!, Icons.smoking_rooms, primaryColor),
+              _buildInfoChip("직업", personalInfo['job']!, Icons.work, primaryColor),
+              _buildInfoChip("운동", personalInfo['exercise']!, Icons.fitness_center, primaryColor),
+              _buildInfoChip("과거질환", personalInfo['pastDiseases']!, Icons.medical_services, primaryColor),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 개인정보 칩 위젯
+  Widget _buildInfoChip(String label, String value, IconData icon, Color primaryColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: primaryColor.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: primaryColor.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 16,
+            color: primaryColor,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            "$label: $value",
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: primaryColor,
+            ),
+          ),
+        ],
       ),
     );
   }

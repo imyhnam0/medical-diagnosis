@@ -6,7 +6,8 @@ import 'aggfactor.dart';
 
 class YourDiseasePage extends StatefulWidget {
   final String userInput;
-  const YourDiseasePage({super.key, required this.userInput});
+  final Map<String, String>? personalInfo;
+  const YourDiseasePage({super.key, required this.userInput, this.personalInfo});
 
   @override
   State<YourDiseasePage> createState() => _YourDiseasePageState();
@@ -391,6 +392,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
                                   builder: (context) => AggfactorPage(
                                     selectedSymptoms: selectedSymptoms.toList(),
                                     userInput: widget.userInput,
+                                    personalInfo: widget.personalInfo,
                                   ),
                                 ),
                               );
@@ -843,6 +845,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
                       //체크한 증상데이터랑 입력한 값을 보냄
                       selectedSymptoms: selectedSymptoms.toList(),
                       userInput: widget.userInput,
+                      personalInfo: widget.personalInfo,
                     ),
                   ),
                 );

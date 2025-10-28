@@ -9,8 +9,7 @@ class PastHistoryPage extends StatefulWidget {
   final String userInput;
   final Map<String, String?> questionHistory;
   final Map<String, double> diseaseProbabilities;
-
-
+  final Map<String, String>? personalInfo;
 
   const PastHistoryPage({
     super.key,
@@ -19,6 +18,7 @@ class PastHistoryPage extends StatefulWidget {
     required this.userInput,
     required this.questionHistory,
     required this.diseaseProbabilities,
+    this.personalInfo,
   });
 
   @override
@@ -410,6 +410,7 @@ class _PastHistoryPageState extends State<PastHistoryPage> {
             userInput: widget.userInput,
             selectedSymptoms: widget.selectedSymptoms,
             questionHistory: finalHistory, // ✅ 모든 질문 누적된 히스토리 전달
+            personalInfo: widget.personalInfo,
             diseaseProbabilities: Map<String, double>.from(diseaseProbabilities),
           ),
         ),

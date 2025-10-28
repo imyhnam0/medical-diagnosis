@@ -6,11 +6,13 @@ import 'pasthistory.dart';
 class AggfactorPage extends StatefulWidget {
   final List<String> selectedSymptoms;
   final String userInput;
+  final Map<String, String>? personalInfo;
 
   const AggfactorPage({
     super.key,
     required this.selectedSymptoms,
     required this.userInput,
+    this.personalInfo,
   });
 
   @override
@@ -317,7 +319,8 @@ class _AggfactorPageState extends State<AggfactorPage> {
             selectedSymptoms: widget.selectedSymptoms,
             //사용자가 답한 질문들 - 모든 악화요인 질문 포함
             questionHistory: allAggravatingAnswers,
-
+            //개인정보
+            personalInfo: widget.personalInfo,
             diseaseProbabilities: Map<String, double>.from(diseaseProbabilities),
           ),
         ),

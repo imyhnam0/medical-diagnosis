@@ -9,7 +9,7 @@ class RiskFactorPage extends StatefulWidget {
   final String userInput;
   final Map<String, String?> questionHistory;
   final Map<String, double> diseaseProbabilities;
-
+  final Map<String, String>? personalInfo;
 
   const RiskFactorPage({
     super.key,
@@ -18,6 +18,7 @@ class RiskFactorPage extends StatefulWidget {
     required this.userInput,
     required this.questionHistory,
     required this.diseaseProbabilities,
+    this.personalInfo,
   });
 
   @override
@@ -437,6 +438,7 @@ class _RiskFactorPageState extends State<RiskFactorPage> {
             userInput: widget.userInput,
             selectedSymptoms: widget.selectedSymptoms,
             questionHistory: finalHistory,
+            personalInfo: widget.personalInfo,
             diseaseProbabilities: Map<String, double>.from(diseaseProbabilities),
           ),
         ),

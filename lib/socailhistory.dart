@@ -9,7 +9,7 @@ class SocialHistoryPage extends StatefulWidget {
   final String userInput;
   final Map<String, String?> questionHistory;
   final Map<String, double> diseaseProbabilities;
-
+  final Map<String, String>? personalInfo;
 
   const SocialHistoryPage({
     super.key,
@@ -18,6 +18,7 @@ class SocialHistoryPage extends StatefulWidget {
     required this.userInput,
     required this.questionHistory,
     required this.diseaseProbabilities,
+    this.personalInfo,
   });
 
   @override
@@ -398,6 +399,7 @@ class _SocialHistoryPageState extends State<SocialHistoryPage> {
             selectedSymptoms: widget.selectedSymptoms,
             // ✅ 모든 질문이 누적된 최종 히스토리 전달
             questionHistory: finalHistory,
+            //personalInfo: widget.personalInfo,
           ),
         ),
       );

@@ -9,7 +9,7 @@ class RefinedDiseasePage extends StatefulWidget {
   final String userInput;
   final List<String> selectedSymptoms;
   final Map<String, String?> questionHistory;// ✅ 추가
-
+  final Map<String, String>? personalInfo;
 
   const RefinedDiseasePage({
     super.key,
@@ -17,6 +17,7 @@ class RefinedDiseasePage extends StatefulWidget {
     required this.userInput,
     required this.selectedSymptoms,
     required this.questionHistory,
+    this.personalInfo,
   });
 
   @override
@@ -443,6 +444,7 @@ class _RefinedDiseasePageState extends State<RefinedDiseasePage> {
                   predictedDisease: widget.predictedDisease,
                   userInput: widget.userInput,
                   selectedSymptoms: widget.selectedSymptoms,
+                  personalInfo: widget.personalInfo,
                 ),
               ),
             );
@@ -649,6 +651,7 @@ class QuestionnairePage extends StatefulWidget {
   final String predictedDisease;
   final String userInput;
   final List<String> selectedSymptoms;
+  final Map<String, String>? personalInfo;
 
   const QuestionnairePage({
     super.key,
@@ -656,6 +659,7 @@ class QuestionnairePage extends StatefulWidget {
     required this.predictedDisease,
     required this.userInput,
     required this.selectedSymptoms,
+    this.personalInfo,
   });
 
   @override
@@ -816,6 +820,28 @@ class _QuestionnairePageState extends State<QuestionnairePage> {
                               ),
                               
                               const SizedBox(height: 20),
+
+                              // 개인정보 섹션 (개인정보가 있을 때만 표시)
+                              if (widget.personalInfo != null) ...[
+                                _buildSection(
+                                  "개인정보",
+                                  Icons.person_outline,
+                                  [
+                                    "나이: ${widget.personalInfo!['age']}세",
+                                    "몸무게: ${widget.personalInfo!['weight']}kg",
+                                    "성별: ${widget.personalInfo!['gender']}",
+                                    "음주: ${widget.personalInfo!['drinking']}",
+                                    "흡연: ${widget.personalInfo!['smoking']}",
+                                    "직업: ${widget.personalInfo!['job']}",
+                                    "운동: ${widget.personalInfo!['exercise']}",
+                                    "과거질환: ${widget.personalInfo!['pastDiseases']}",
+                                  ],
+                                  primaryColor,
+                                  isSmallScreen,
+                                ),
+                                
+                                const SizedBox(height: 20),
+                              ],
                               
                               // 문진 질문과 답변
                               _buildSection(

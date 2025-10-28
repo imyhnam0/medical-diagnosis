@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-import 'symptom_select.dart';
+import 'PersonalInfo.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'isdiseaseright.dart';
 
 
 
@@ -375,7 +376,7 @@ class _HomeBackgroundState extends State<HomeBackground>
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
-                                          builder: (context) => const ConsentPage(),
+                                          builder: (context) => const IsDiseaseRightPage(),
                                         ),
                                       );
                                     },
@@ -587,11 +588,11 @@ class _ConsentPageState extends State<ConsentPage>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildStepItem("1", "증상 선택", "해당되는 증상을 선택합니다", isSmallScreen),
-                        _buildStepItem("2", "악화 요인 분석", "증상을 악화시키는 요인들을 확인합니다", isSmallScreen),
-                        _buildStepItem("3", "과거 질환 이력", "과거 질환 이력을 확인합니다", isSmallScreen),
-                        _buildStepItem("4", "위험 요인 평가", "질병 위험요인을 평가합니다", isSmallScreen),
-                        _buildStepItem("5", "사회적 이력", "사회적 환경과 생활습관을 확인합니다", isSmallScreen),
+                        _buildStepItem("1", "개인 정보", "나이, 성별, 음주, 흡연, 직업, 운동 여부 등을 입력합니다", isSmallScreen),
+                        _buildStepItem("2", "과거 질환 이력", "과거에 앓았던 질병을 선택하거나 입력합니다", isSmallScreen),
+                        _buildStepItem("3", "증상 선택", "현재 느끼는 증상과 관련된 통증 양상을 선택합니다", isSmallScreen),
+                        _buildStepItem("4", "악화 요인 분석", "증상이 악화되는 상황이나 요인을 확인합니다", isSmallScreen),
+                        _buildStepItem("5", "위험 요인 평가", "현재 앓고 있는 질병을 확인합니다.", isSmallScreen),
                       ],
                     ),
                   ),
@@ -629,7 +630,7 @@ class _ConsentPageState extends State<ConsentPage>
                             Navigator.pop(context);
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => const SymptomSelectPage()),
+                              MaterialPageRoute(builder: (context) => const PersonalInfoPage())
                             );
                           },
                           style: ElevatedButton.styleFrom(
