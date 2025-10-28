@@ -2,11 +2,10 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'aggfactor.dart';
 
 class YourDiseasePage extends StatefulWidget {
   final String userInput;
-  final Map<String, String>? personalInfo;
+  final Map<String, dynamic>? personalInfo;
   const YourDiseasePage({super.key, required this.userInput, this.personalInfo});
 
   @override
@@ -386,16 +385,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
                             ),
                             onPressed: () {
                               Navigator.pop(context); // 팝업 닫기
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => AggfactorPage(
-                                    selectedSymptoms: selectedSymptoms.toList(),
-                                    userInput: widget.userInput,
-                                    personalInfo: widget.personalInfo,
-                                  ),
-                                ),
-                              );
+                              
                             },
                             child: Text(
                               "없습니다",
@@ -552,7 +542,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        "증상 입력",
+                        "가슴이 아픈게 어떻게 아프시고 관련된 증상이 더 있나요",
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -838,17 +828,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
                   ? null
                   : () {
                 print("✅ 선택된 증상 리스트: $selectedSymptoms");
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => AggfactorPage(
-                      //체크한 증상데이터랑 입력한 값을 보냄
-                      selectedSymptoms: selectedSymptoms.toList(),
-                      userInput: widget.userInput,
-                      personalInfo: widget.personalInfo,
-                    ),
-                  ),
-                );
+                
               },
               child: selectedSymptoms.isEmpty
                 ? Row(

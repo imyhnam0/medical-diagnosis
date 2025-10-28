@@ -4,6 +4,7 @@ import 'firebase_options.dart';
 import 'PersonalInfo.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'isdiseaseright.dart';
+import 'yourdisease.dart';
 
 
 
@@ -48,29 +49,40 @@ Future<void> fetchAllDiseases() async {
   }
 }
 
-//악화요인만 가져오는 함수
+//각 이력만 가져오는 함수
 Future<void> fetchUniqueAggravatingFactors() async {
   final firestore = FirebaseFirestore.instance;
   final snapshot = await firestore.collection('diseases_ko').get();
 
-  Set<String> uniqueFactors = {}; // 중복 제거용 Set
+  // 사회적 이력을 key로, 관련 질병명 리스트를 value로 저장하는 Map
+  Map<String, List<String>> factorToDiseases = {};
 
   for (var doc in snapshot.docs) {
     final data = doc.data();
-    List<dynamic> aggravatingFactors = data['사회적 이력'] ?? [];
+    String diseaseName = data['질환명'] ?? '이름 없음';
+    List<dynamic> socialHistory = data['과거 질환 이력'] ?? [];
 
-    // 리스트 안의 요소들을 Set에 추가 (자동으로 중복 제거)
-    for (var factor in aggravatingFactors) {
-      if (factor is String) uniqueFactors.add(factor.trim());
+    // 각 사회적 이력에 대해 질병명 매핑
+    for (var factor in socialHistory) {
+      if (factor is String) {
+        String trimmedFactor = factor.trim();
+        if (!factorToDiseases.containsKey(trimmedFactor)) {
+          factorToDiseases[trimmedFactor] = [];
+        }
+        factorToDiseases[trimmedFactor]!.add(diseaseName);
+      }
     }
   }
 
-  print('🧩 중복 제거된 목록:');
-  for (var factor in uniqueFactors) {
-    print('- $factor');
-  }
+  print('🧩 과거 질환 이력 관련 질병:');
+  factorToDiseases.forEach((factor, diseases) {
+    print('- $factor:');
+    for (var disease in diseases) {
+      print('  • $disease');
+    }
+  });
 
-  print('총 ${uniqueFactors.length}개 항목');
+  print('총 ${factorToDiseases.length}개 사회적 이력 항목');
 }
 
 class MyApp extends StatelessWidget {
@@ -373,10 +385,11 @@ class _HomeBackgroundState extends State<HomeBackground>
                                   child: InkWell(
                                     borderRadius: BorderRadius.circular(35),
                                     onTap: () {
+                                      //fetchUniqueAggravatingFactors();
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
-                                          builder: (context) => const IsDiseaseRightPage(),
+                                          builder: (context) => const ConsentPage(),
                                         ),
                                       );
                                     },
