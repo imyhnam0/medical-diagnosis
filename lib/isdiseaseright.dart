@@ -15,11 +15,7 @@ class IsDiseaseRightPage extends StatefulWidget {
 class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  String? _errorMessage;
   bool _isLoading = false;
-
-  String? _matchedSentence; // ✅ Gemini가 유사하다고 판단한 문장
-  bool _awaitingUserConfirm = false; // ✅ "예/아니요" 상태 관리
 
   /// ✅ Gemini 호출 (유사 문장 + TRUE/FALSE)
   Future<Map<String, dynamic>> checkChestPain(String input) async {
@@ -179,15 +175,17 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
   Future<void> _onCheckPressed(BuildContext context) async {
     final input = _controller.text.trim();
     if (input.isEmpty) {
-      setState(() => _errorMessage = "증상을 입력해주세요.");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("증상을 입력해주세요."),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
       return;
     }
 
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
-      _matchedSentence = null;
-      _awaitingUserConfirm = false;
     });
 
     try {
@@ -201,12 +199,7 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
         // 흉통 관련 증상이면 바로 YourDiseasePage로 이동
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => YourDiseasePage(
-              userInput: input,
-              personalInfo: widget.personalInfo,
-            ),
-          ),
+          MaterialPageRoute(builder: (_) => YourDiseasePage()),
         );
       } else {
         print("❌ 흉통 관련이 아닌 것으로 판단됨");
@@ -238,9 +231,12 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
       }
     } catch (e) {
       print("💥 오류 발생: $e");
-      setState(() {
-        _errorMessage = "서버 오류가 발생했습니다: $e";
-      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("서버 오류가 발생했습니다: $e"),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
     } finally {
       setState(() => _isLoading = false);
     }
@@ -438,7 +434,7 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
                               ),
                               child: TextField(
                                 controller: _controller,
-                                enabled: !_awaitingUserConfirm,
+                                enabled: !_isLoading,
                                 maxLines: 3,
                                 decoration: InputDecoration(
                                   hintText: "예: 가슴이 답답해요, 숨이 막혀요, 심장이 두근거려요",
@@ -464,7 +460,7 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
                             const SizedBox(height: 20),
 
                             // 확인 버튼
-                            if (!_awaitingUserConfirm && !_isLoading)
+                            if (!_isLoading)
                               SizedBox(
                                 width: double.infinity,
                                 child: ElevatedButton.icon(
@@ -498,54 +494,51 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
                         ),
                       ),
 
-                      const SizedBox(height: 20),
-
                       // 로딩 오버레이 (화면 중앙)
-                      if (_isLoading)
-                        Positioned.fill(
-                          child: Container(
-                            color: Colors.black.withOpacity(0.3),
-                            // 반투명 배경
-                            child: Center(
-                              child: Container(
-                                padding: const EdgeInsets.all(24),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(20),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.2),
-                                      blurRadius: 15,
-                                      offset: const Offset(0, 5),
-                                    ),
-                                  ],
-                                ),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    CircularProgressIndicator(
-                                      color: const Color(0xFF0F4C75),
-                                      strokeWidth: 3,
-                                    ),
-                                    const SizedBox(height: 16),
-                                    const Text(
-                                      "AI가 증상을 분석하고 있습니다...",
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFF0F4C75),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
                     ],
                   ),
                 ),
               ),
+              if (_isLoading)
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.black.withOpacity(0.3),
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 15,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircularProgressIndicator(
+                              color: const Color(0xFF0F4C75),
+                              strokeWidth: 3,
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              "AI가 증상을 분석하고 있습니다...",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF0F4C75),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),

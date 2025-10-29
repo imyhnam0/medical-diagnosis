@@ -2,11 +2,13 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'DiseaseDataManager.dart';
+import 'AggravatingPage.dart';
 
 class YourDiseasePage extends StatefulWidget {
-  final String userInput;
-  final Map<String, dynamic>? personalInfo;
-  const YourDiseasePage({super.key, required this.userInput, this.personalInfo});
+  //final String userInput;
+  //final Map<String, dynamic>? personalInfo;
+  const YourDiseasePage({super.key});
 
   @override
   State<YourDiseasePage> createState() => _YourDiseasePageState();
@@ -170,6 +172,8 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
 
 
 
+
+
   final Set<String> selectedSymptoms = {};
   final TextEditingController _controller = TextEditingController();
 
@@ -244,7 +248,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
   }
   void _showConfirmDialog(BuildContext context, List<String> matchedSymptoms) {
     final TextEditingController popupController = TextEditingController();
-    final primaryColor = const Color(0xFF2E7D8A);
+    final primaryColor = const Color(0xFF0F4C75);
 
     showDialog(
       context: context,
@@ -257,11 +261,15 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
                 borderRadius: BorderRadius.circular(24),
               ),
               child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.8,
+                  maxWidth: MediaQuery.of(context).size.width * 0.9,
+                ),
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(24),
                   gradient: LinearGradient(
-                    colors: [Colors.white, const Color(0xFFF8FAFC)],
+                    colors: [Colors.white, const Color(0xFFF8F9FA)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -273,10 +281,11 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
                     ),
                   ],
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                     // 제목 + 아이콘
                     Row(
                       children: [
@@ -321,23 +330,33 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          ...selectedSymptoms.map((symptom) {
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 3),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.check_circle, color: primaryColor, size: 16),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      symptom, 
-                                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                          // 증상이 많을 때 스크롤 가능하도록 제한
+                          ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxHeight: 200, // 최대 높이 제한
+                            ),
+                            child: SingleChildScrollView(
+                              child: Column(
+                                children: selectedSymptoms.map((symptom) {
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 3),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.check_circle, color: primaryColor, size: 16),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            symptom, 
+                                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ),
-                                ],
+                                  );
+                                }).toList(),
                               ),
-                            );
-                          }).toList(),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -432,7 +451,8 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
                         ),
                       ],
                     )
-                  ],
+                    ],
+                  ),
                 ),
               ),
             );
@@ -470,12 +490,12 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = const Color(0xFF2E7D8A); // 의료 테마 색상
-    final secondaryColor = const Color(0xFF4A90A4);
-    final accentColor = const Color(0xFF7FB3D3);
+    final primaryColor = const Color(0xFF0F4C75); // main.dart와 동일한 색상
+    final secondaryColor = const Color(0xFF3282B8);
+    final accentColor = const Color(0xFFBBE1FA);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
         centerTitle: true,
         elevation: 0,
@@ -567,7 +587,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
                       controller: _controller,
                       maxLines: 3,
                       decoration: InputDecoration(
-                        hintText: "예: 가슴이 아프고 숨이 차요, 어지럽고 피곤해요",
+                        hintText: "예: 가슴이 막 저리고 숨이 차요",
                         hintStyle: TextStyle(
                           color: Colors.grey[400],
                           fontSize: 14,
@@ -626,10 +646,10 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
               margin: const EdgeInsets.symmetric(horizontal: 16),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.blue[50],
+                color: const Color(0xFFF0F8FF),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: Colors.blue.withOpacity(0.2),
+                  color: primaryColor.withOpacity(0.2),
                   width: 1,
                 ),
               ),
@@ -637,7 +657,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
                 children: [
                   Icon(
                     Icons.list_alt,
-                    color: Colors.blue[600],
+                    color: primaryColor,
                     size: 20,
                   ),
                   const SizedBox(width: 12),
@@ -647,7 +667,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
-                        color: Colors.blue[700],
+                        color: primaryColor,
                       ),
                     ),
                   ),
@@ -764,7 +784,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
                                 margin: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: Colors.blue[50],
+                                  color: const Color(0xFFF0F8FF),
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(color: accentColor.withOpacity(0.3)),
                                 ),
@@ -826,10 +846,28 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
               ),
               onPressed: selectedSymptoms.isEmpty
                   ? null
-                  : () {
+                  : () async {
                 print("✅ 선택된 증상 리스트: $selectedSymptoms");
-                
+
+                // 🔹 Firestore에서 증상 관련 질병 검색
+                final diseases = await DiseaseDataManager.fetchSymptomDiseases(selectedSymptoms.toList());
+
+                // 🔹 전역 DiseaseDataManager에 저장
+                final manager = DiseaseDataManager();
+                manager.setSymptomDiseases(diseases);
+
+                // 🔹 저장 확인용 로그
+                manager.printAllData();
+
+                // 🔹 다음 단계로 이동
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AggravatingPage(), // or 다음 페이지
+                  ),
+                );
               },
+
               child: selectedSymptoms.isEmpty
                 ? Row(
                     mainAxisAlignment: MainAxisAlignment.center,

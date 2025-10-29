@@ -3,9 +3,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'PersonalInfo.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'isdiseaseright.dart';
+import 'ResultPage.dart';
 import 'yourdisease.dart';
-
 
 
 void main() async {
@@ -602,7 +601,7 @@ class _ConsentPageState extends State<ConsentPage>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildStepItem("1", "개인 정보", "나이, 성별, 음주, 흡연, 직업, 운동 여부 등을 입력합니다", isSmallScreen),
-                        _buildStepItem("2", "과거 질환 이력", "과거에 앓았던 질병을 선택하거나 입력합니다", isSmallScreen),
+                        _buildStepItem("2", "증산 판별", "어떤 유형의 증상인지 판별합니다.", isSmallScreen),
                         _buildStepItem("3", "증상 선택", "현재 느끼는 증상과 관련된 통증 양상을 선택합니다", isSmallScreen),
                         _buildStepItem("4", "악화 요인 분석", "증상이 악화되는 상황이나 요인을 확인합니다", isSmallScreen),
                         _buildStepItem("5", "위험 요인 평가", "현재 앓고 있는 질병을 확인합니다.", isSmallScreen),
