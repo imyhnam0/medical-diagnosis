@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'DiseaseDataManager.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'isdiseaseright.dart';
+import 'PastDisease.dart';
 
 enum _SocialField {
   age,
@@ -345,7 +345,7 @@ class _PersonalInfoPageState extends State<PersonalInfoPage>
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => IsDiseaseRightPage(),
+          builder: (_) => const PastDiseasePage(),
         ),
       );
       return;
@@ -868,7 +868,7 @@ class _PersonalInfoPageState extends State<PersonalInfoPage>
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => IsDiseaseRightPage(),
+                builder: (_) => const PastDiseasePage(),
               ),
             );
           } else {
