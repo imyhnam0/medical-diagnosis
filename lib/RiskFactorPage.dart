@@ -78,9 +78,52 @@ class _RiskFactorPageState extends State<RiskFactorPage> {
   Future<void> _goToResultPage() async {
     if (!_canProceedNext) return;
 
-    if (_pendingDiseases.isNotEmpty) {
+    final keywords = _matchedRiskFactors
+        .map((keyword) => keyword.trim())
+        .where((keyword) => keyword.isNotEmpty)
+        .toList();
+
+    if (_pendingDiseases.isNotEmpty && keywords.isNotEmpty) {
       final manager = DiseaseDataManager();
-      manager.addDiseaseScores(_pendingDiseases);
+      manager.addScoresForKeywordMatches(
+        diseases: _pendingDiseases,
+        keywords: keywords,
+        attributeKey: '위험 요인',
+      );
+
+      final dedupedDiseases = <String, Map<String, dynamic>>{
+        for (final disease in _pendingDiseases)
+          (disease['질환명']?.toString() ?? jsonEncode(disease)): disease,
+      };
+
+      final keywordMatches = <String, List<String>>{};
+      for (final keyword in keywords) {
+        final matched = <String>[];
+
+        for (final entry in dedupedDiseases.entries) {
+          final riskFactors = entry.value['위험 요인'];
+          if (riskFactors is String) {
+            if (riskFactors.trim() == keyword) {
+              matched.add(entry.key);
+            }
+          } else if (riskFactors is Iterable) {
+            final values = riskFactors
+                .map((value) => value.toString().trim())
+                .where((value) => value.isNotEmpty)
+                .toSet();
+            if (values.contains(keyword)) {
+              matched.add(entry.key);
+            }
+          }
+        }
+
+        if (matched.isNotEmpty) {
+          keywordMatches[keyword] = matched;
+        }
+      }
+
+      manager.printScoreTotals();
+      debugPrint("🧩 위험 요인별 점수 누적 현황: $keywordMatches");
     }
 
     if (!mounted) return;

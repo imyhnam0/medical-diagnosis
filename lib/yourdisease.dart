@@ -7,8 +7,13 @@ import 'AggravatingPage.dart';
 
 class YourDiseasePage extends StatefulWidget {
   final String? followUpQuestion;
+  final String? similarSentence;
 
-  const YourDiseasePage({super.key, this.followUpQuestion});
+  const YourDiseasePage({
+    super.key,
+    this.followUpQuestion,
+    this.similarSentence,
+  });
 
   @override
   State<YourDiseasePage> createState() => _YourDiseasePageState();
@@ -24,8 +29,28 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
   final Map<String, Map<String, dynamic>> _aggregatedDiseases = {};
   bool _isLastStep = false; // 마지막 질문 여부
   static const String _finalQuestionText = "지금까지 말한 증상 말고 다른 증상이 있나요?";
+  static const String _completedQuestionText = "모든 질문이 완료되었습니다. 다음 단계 버튼을 눌러주세요.";
   bool _canProceedNextStep = false;
+  bool _initialExtractionDone = false;
 
+  int get _answeredQuestionCount {
+    if (_canProceedNextStep) {
+      return _maxQuestions;
+    }
+    final count = _questionStep - 1;
+    if (count < 0) {
+      return 0;
+    }
+    return count > _maxQuestions ? _maxQuestions : count;
+  }
+
+  int get _remainingQuestionCount {
+    final remaining = _maxQuestions - _answeredQuestionCount;
+    if (remaining < 0) {
+      return 0;
+    }
+    return remaining;
+  }
 
   final Map<String, List<String>> symptomCategories = {
     "흉부 관련 증상": [
@@ -92,6 +117,10 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
     _currentQuestion = (question != null && question.isNotEmpty)
         ? question
         : "가슴이 아픈게 어떻게 아프시고\n관련된 증상이 더 있나요";
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _runInitialSymptomExtraction();
+    });
   }
   
   Future<void> _handleUserInput(String input) async {
@@ -105,6 +134,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
       _controller.clear();
       setState(() {
         _canProceedNextStep = true;
+        _currentQuestion = _completedQuestionText;
       });
       return;
     }
@@ -152,7 +182,51 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
       );
     } else {
       final manager = DiseaseDataManager();
-      manager.addDiseaseScores(aggregatedList);
+      debugPrint(
+          "💾 저장할 질병 목록: ${aggregatedList.map((d) => d['질환명']).toList()} (${aggregatedList.length}개)");
+
+      final selectedSymptomList = _allSelectedSymptoms
+          .map((symptom) => symptom.trim())
+          .where((symptom) => symptom.isNotEmpty)
+          .toList();
+
+      manager.addScoresForKeywordMatches(
+        diseases: aggregatedList,
+        keywords: selectedSymptomList,
+        attributeKey: '증상',
+      );
+
+      final dedupedDiseases = <String, Map<String, dynamic>>{
+        for (final disease in aggregatedList)
+          (disease['질환명']?.toString() ?? jsonEncode(disease)): disease,
+      };
+      final symptomMatches = <String, List<String>>{};
+
+      for (final symptom in selectedSymptomList) {
+        final matched = <String>[];
+        for (final entry in dedupedDiseases.entries) {
+          final symptomField = entry.value['증상'];
+          if (symptomField is String) {
+            if (symptomField.trim() == symptom) {
+              matched.add(entry.key);
+            }
+          } else if (symptomField is Iterable) {
+            final values = symptomField
+                .map((value) => value.toString().trim())
+                .where((value) => value.isNotEmpty)
+                .toSet();
+            if (values.contains(symptom)) {
+              matched.add(entry.key);
+            }
+          }
+        }
+        if (matched.isNotEmpty) {
+          symptomMatches[symptom] = matched;
+        }
+      }
+
+      manager.printScoreTotals();
+      debugPrint("🧩 증상별 점수 누적 현황: $symptomMatches");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("누적 증상 기반으로 ${aggregatedList.length}개 질병을 저장했습니다.")),
       );
@@ -397,12 +471,13 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
   Future<List<String>> _matchSymptoms(
     String input, {
     bool showConfirmation = true,
+    String? questionOverride,
   }) async {
     final trimmedInput = input.trim();
     if (trimmedInput.isEmpty) return [];
 
     final payload = {
-      "question": _currentQuestion,
+      "question": questionOverride ?? _currentQuestion,
       "answer": trimmedInput,
       "symptomCategories": symptomCategories,
       "previousSymptoms": selectedSymptoms.toList(),
@@ -479,6 +554,22 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
     return [];
   }
 
+  Future<void> _runInitialSymptomExtraction() async {
+    if (_initialExtractionDone) return;
+    final similarSentence = widget.similarSentence?.trim();
+    if (similarSentence == null || similarSentence.isEmpty) {
+      _initialExtractionDone = true;
+      return;
+    }
+
+    _initialExtractionDone = true;
+    await _matchSymptoms(
+      "네",
+      showConfirmation: false,
+      questionOverride: similarSentence,
+    );
+  }
+
 
 
 
@@ -490,6 +581,11 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
   Widget build(BuildContext context) {
     final primaryColor = const Color(0xFF0F4C75); // main.dart와 동일한 색상
     final secondaryColor = const Color(0xFF3282B8);
+    final answeredQuestions = _answeredQuestionCount;
+    final remainingQuestions = _remainingQuestionCount;
+    final double progress = _maxQuestions == 0
+        ? 0
+        : answeredQuestions.clamp(0, _maxQuestions) / _maxQuestions;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -670,144 +766,78 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
 
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: primaryColor.withOpacity(0.15),
-                        width: 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.local_hospital, color: primaryColor, size: 20),
-                            const SizedBox(width: 8),
-                            Text(
-                              "AI가 추출한 증상",
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color: primaryColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        if (selectedSymptoms.isEmpty)
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF5F9FF),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              "AI 분석 결과가 여기에 표시됩니다.",
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 14,
-                                height: 1.4,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          )
-                        else
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: selectedSymptoms.map((symptom) {
-                              return Chip(
-                                backgroundColor: primaryColor.withOpacity(0.1),
-                                label: Text(
-                                  symptom,
-                                  style: TextStyle(
-                                    color: primaryColor,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                deleteIcon: Icon(Icons.close, color: primaryColor, size: 18),
-                                onDeleted: () {
-                                  setState(() {
-                                    selectedSymptoms.remove(symptom);
-                                    _allSelectedSymptoms.remove(symptom);
-                                  });
-                                },
-                              );
-                            }).toList(),
-                          ),
-                      ],
-                    ),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: primaryColor.withOpacity(0.1),
+                    width: 1,
                   ),
-                  if (_allSelectedSymptoms.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: primaryColor.withOpacity(0.1),
-                          width: 1,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.04),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.timeline, color: secondaryColor, size: 20),
-                              const SizedBox(width: 8),
-                              Text(
-                                "지금까지 누적된 증상",
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  color: secondaryColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: _allSelectedSymptoms.map((symptom) {
-                              return Chip(
-                                label: Text(
-                                  symptom,
-                                  style: TextStyle(color: primaryColor),
-                                ),
-                                backgroundColor: primaryColor.withOpacity(0.1),
-                              );
-                            }).toList(),
-                          ),
-                        ],
-                      ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.04),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
                     ),
                   ],
-                ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.timeline, color: secondaryColor, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          "지금까지 누적된 증상",
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: secondaryColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (_allSelectedSymptoms.isEmpty)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 24,
+                          horizontal: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5F9FF),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          "AI 분석 결과가 여기에 표시됩니다.",
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 14,
+                            height: 1.4,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      )
+                    else
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _allSelectedSymptoms.map((symptom) {
+                          return Chip(
+                            label: Text(
+                              symptom,
+                              style: TextStyle(color: primaryColor),
+                            ),
+                            backgroundColor: primaryColor.withOpacity(0.1),
+                          );
+                        }).toList(),
+                      ),
+                  ],
+                ),
               ),
             ),
 
@@ -828,60 +858,121 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
               ),
             ],
           ),
-          child: SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: ElevatedButton(
-              onPressed: _canProceedNextStep ? _finishSurvey : null,
-              style: ElevatedButton.styleFrom(
-                elevation: _canProceedNextStep ? 4 : 0,
-                backgroundColor:
-                    _canProceedNextStep ? Colors.transparent : Colors.grey[300],
-                shadowColor:
-                    _canProceedNextStep ? Colors.black26 : Colors.transparent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: (_canProceedNextStep ? primaryColor : secondaryColor)
+                      .withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                padding: EdgeInsets.zero,
-              ),
-              child: _canProceedNextStep
-                  ? Ink(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [primaryColor, secondaryColor],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          _canProceedNextStep
+                              ? Icons.check_circle
+                              : Icons.assignment_outlined,
+                          color: _canProceedNextStep
+                              ? primaryColor
+                              : secondaryColor,
+                          size: 20,
                         ),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Container(
-                        alignment: Alignment.center,
-                        child: Text(
-                          "다음 단계로 (${_allSelectedSymptoms.length}개 증상)",
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _canProceedNextStep
+                                ? "모든 질문을 완료했습니다!"
+                                : "남은 질문 ${remainingQuestions}개 · 총 $_maxQuestions개",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: _canProceedNextStep
+                                  ? primaryColor
+                                  : secondaryColor,
+                            ),
                           ),
                         ),
-                      ),
-                    )
-                  : Container(
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: const Text(
-                        "모든 질문을 완료하면 다음 단계가 활성화됩니다",
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black54,
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        minHeight: 6,
+                        backgroundColor: Colors.grey[300],
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          _canProceedNextStep ? primaryColor : secondaryColor,
                         ),
                       ),
                     ),
-            ),
+                  ],
+                ),
+              ),
+              SizedBox(
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: _canProceedNextStep ? _finishSurvey : null,
+                  style: ElevatedButton.styleFrom(
+                    elevation: _canProceedNextStep ? 4 : 0,
+                    backgroundColor: _canProceedNextStep
+                        ? Colors.transparent
+                        : Colors.grey[300],
+                    shadowColor: _canProceedNextStep
+                        ? Colors.black26
+                        : Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    padding: EdgeInsets.zero,
+                  ),
+                  child: _canProceedNextStep
+                      ? Ink(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [primaryColor, secondaryColor],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Container(
+                            alignment: Alignment.center,
+                            child: Text(
+                              "다음 단계로 (${_allSelectedSymptoms.length}개 증상)",
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        )
+                      : Container(
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Text(
+                            "모든 질문을 완료하면 다음 단계가 활성화됩니다",
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black54,
+                            ),
+                          ),
+                        ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

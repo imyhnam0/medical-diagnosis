@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import 'isdiseaseright.dart';
+import 'DiseaseDataManager.dart';
 
 class PastDiseasePage extends StatefulWidget {
   const PastDiseasePage({super.key});
@@ -93,6 +94,11 @@ class _PastDiseasePageState extends State<PastDiseasePage>
             .where((keyword) => keyword.isNotEmpty)
             .toSet()
             .toList();
+        final diseasesRaw = decoded["diseases"] as List<dynamic>? ?? [];
+        final diseases = diseasesRaw
+            .whereType<Map>()
+            .map((disease) => disease.cast<String, dynamic>())
+            .toList();
 
         setState(() {
           _matchedKeywords = keywords;
@@ -100,6 +106,45 @@ class _PastDiseasePageState extends State<PastDiseasePage>
 
         if (keywords.isEmpty) {
           _showSnackBar("추출된 키워드가 없습니다.");
+        } else if (diseases.isNotEmpty) {
+          final manager = DiseaseDataManager();
+          manager.addScoresForKeywordMatches(
+            diseases: diseases,
+            keywords: keywords,
+            attributeKey: '과거 질환 이력',
+          );
+
+          final dedupedDiseases = <String, Map<String, dynamic>>{
+            for (final disease in diseases)
+              (disease['질환명']?.toString() ?? jsonEncode(disease)): disease,
+          };
+
+          final keywordMatches = <String, List<String>>{};
+          for (final keyword in keywords) {
+            final matched = <String>[];
+            for (final entry in dedupedDiseases.entries) {
+              final history = entry.value['과거 질환 이력'];
+              if (history is String) {
+                if (history.trim() == keyword) {
+                  matched.add(entry.key);
+                }
+              } else if (history is Iterable) {
+                final values = history
+                    .map((value) => value.toString().trim())
+                    .where((value) => value.isNotEmpty)
+                    .toSet();
+                if (values.contains(keyword)) {
+                  matched.add(entry.key);
+                }
+              }
+            }
+            if (matched.isNotEmpty) {
+              keywordMatches[keyword] = matched;
+            }
+          }
+
+          manager.printScoreTotals();
+          debugPrint("🧩 과거 질환 키워드별 점수 누적 현황: $keywordMatches");
         }
       } else {
         _showSnackBar("서버 오류가 발생했습니다. (${response.statusCode})");

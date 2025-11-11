@@ -88,17 +88,6 @@ class _ResultPageState extends State<ResultPage> {
     }
   }
 
-  /// 🔹 카테고리별 질병 리스트 출력 함수
-  void _printDiseaseCategory(String category, List<Map<String, dynamic>> diseases) {
-    if (diseases.isEmpty) {
-      print("⚠️ [$category] 관련 질병 없음");
-      return;
-    }
-
-    final diseaseNames = diseases.map((d) => d['질환명'] ?? '알 수 없는 질병').toList();
-    print("🩺 [$category] (${diseaseNames.length}개): ${diseaseNames.join(', ')}");
-  }
-
   void _calculateDiseaseScores() {
     _diseaseScores.clear();
     _diseaseScores.addAll(_diseaseManager.diseaseScoreTotals);
@@ -117,37 +106,6 @@ class _ResultPageState extends State<ResultPage> {
     }
     
     setState(() {});
-  }
-
-  void _addDiseasesToScore(List<Map<String, dynamic>> diseases, String category) {
-    // 카테고리별 가중치 설정
-    double weight;
-    switch (category) {
-      case '증상':
-        weight = 1.0;
-        break;
-      case '악화 요인':
-        weight = 0.6;
-        break;
-      case '과거 질환 이력':
-        weight = 0.5;
-        break;
-      case '위험 요인':
-        weight = 0.4;
-        break;
-      case '사회적 이력':
-        weight = 0.2;
-        break;
-      default:
-        weight = 1.0;
-    }
-
-    // 각 질병에 가중치 점수를 더함
-    for (var disease in diseases) {
-      String diseaseName = disease['질환명'] ?? '알 수 없는 질병';
-      _diseaseScores[diseaseName] =
-          (_diseaseScores[diseaseName] ?? 0) + weight;
-    }
   }
 
 
@@ -578,11 +536,15 @@ class _ResultPageState extends State<ResultPage> {
             ),
           ),
           const SizedBox(width: 12),
-          Text(
-            "AI가 질병 정보를 분석하고 있습니다...",
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey[600],
+          Expanded(
+            child: Text(
+              "AI가 질병 정보를 분석하고 있습니다...",
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey[600],
+              ),
+              softWrap: true,
+              overflow: TextOverflow.fade,
             ),
           ),
         ],

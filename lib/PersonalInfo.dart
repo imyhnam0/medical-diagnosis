@@ -308,22 +308,52 @@ class _PersonalInfoPageState extends State<PersonalInfoPage>
   ) {
     final manager = DiseaseDataManager();
 
-    // ✅ 질병은 중복 여부 상관없이 모두 점수 누적 (누적형 구조)
-    final dedupedDiseases = <String, Map<String, dynamic>>{};
-    for (final disease in newDiseases) {
-      final name = disease['질환명']?.toString() ?? jsonEncode(disease);
-      dedupedDiseases[name] = disease;
-    }
+    final trimmedKeywords = newKeywords
+        .map((keyword) => keyword.trim())
+        .where((keyword) => keyword.isNotEmpty)
+        .toList();
 
-    // ✅ 질병 점수는 계속 누적 (중복 가능)
-    if (dedupedDiseases.isNotEmpty) {
-      manager.addDiseaseScores(dedupedDiseases.values);
-    }
+    manager.addScoresForKeywordMatches(
+      diseases: newDiseases,
+      keywords: trimmedKeywords,
+      attributeKey: '사회적 이력',
+    );
 
     manager.printScoreTotals();
 
-    print("✨ 새 키워드 추가됨: ${newKeywords.map((e) => e.trim()).where((e) => e.isNotEmpty).toList()}");
-    print("🧩 질병 점수 누적됨: ${dedupedDiseases.keys}");
+    final dedupedDiseases = <String, Map<String, dynamic>>{
+      for (final disease in newDiseases)
+        (disease['질환명']?.toString() ?? jsonEncode(disease)): disease,
+    };
+
+    final keywordMatches = <String, List<String>>{};
+    for (final keyword in trimmedKeywords) {
+      final matched = <String>[];
+
+      for (final entry in dedupedDiseases.entries) {
+        final history = entry.value['사회적 이력'];
+        if (history is String) {
+          if (history.trim() == keyword) {
+            matched.add(entry.key);
+          }
+        } else if (history is Iterable) {
+          final values = history
+              .map((value) => value.toString().trim())
+              .where((value) => value.isNotEmpty)
+              .toSet();
+          if (values.contains(keyword)) {
+            matched.add(entry.key);
+          }
+        }
+      }
+
+      if (matched.isNotEmpty) {
+        keywordMatches[keyword] = matched;
+      }
+    }
+
+    print("✨ 새 키워드 추가됨: $trimmedKeywords");
+    print("🧩 키워드별 점수 누적 현황: $keywordMatches");
   }
 
 
@@ -887,10 +917,9 @@ class _PersonalInfoPageState extends State<PersonalInfoPage>
 
   Widget _buildResultSection(_SocialField field) {
     final keywords = _keywordsByField[field] ?? [];
-    final diseases = _diseasesByField[field] ?? [];
     final isAnalyzed = _completedFields.contains(field);
 
-    if (keywords.isEmpty && diseases.isEmpty && !isAnalyzed) {
+    if (keywords.isEmpty && !isAnalyzed) {
       return Column(
         children: [
           Icon(
@@ -900,7 +929,7 @@ class _PersonalInfoPageState extends State<PersonalInfoPage>
           ),
           const SizedBox(height: 12),
           Text(
-            "분석하기 버튼을 누르면 해당 항목에 대한 키워드와 관련 질병이 표시됩니다.",
+            "분석하기 버튼을 누르면 해당 항목에 대한 키워드가 표시됩니다.",
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.white.withOpacity(0.85),
@@ -994,63 +1023,6 @@ class _PersonalInfoPageState extends State<PersonalInfoPage>
                               color: Color(0xFF0F4C75),
                               fontWeight: FontWeight.w600,
                             ),
-                          ),
-                        ),
-                      )
-                      .toList(),
-                ),
-              const SizedBox(height: 20),
-              const Text(
-                "해당 키워드를 포함한 질병",
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF0F4C75),
-                ),
-              ),
-              const SizedBox(height: 10),
-              if (diseases.isEmpty)
-                Text(
-                  "없음",
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                  ),
-                )
-              else
-                Column(
-                  children: diseases
-                      .map(
-                        (disease) => Container(
-                          width: double.infinity,
-                          margin: const EdgeInsets.symmetric(vertical: 6),
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[100],
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                disease['질환명']?.toString() ?? '이름 미확인',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF1A202C),
-                                ),
-                              ),
-                              if (disease['요약'] != null &&
-                                  disease['요약'].toString().isNotEmpty) ...[
-                                const SizedBox(height: 6),
-                                Text(
-                                  disease['요약'].toString(),
-                                  style: TextStyle(
-                                    color: Colors.grey[700],
-                                    height: 1.5,
-                                  ),
-                                ),
-                              ],
-                            ],
                           ),
                         ),
                       )

@@ -34,6 +34,66 @@ class DiseaseDataManager {
     }
   }
 
+  void addScoresForKeywordMatches({
+    required Iterable<Map<String, dynamic>> diseases,
+    required Iterable<String> keywords,
+    required String attributeKey,
+    double scorePerKeyword = 1.0,
+  }) {
+    if (attributeKey.trim().isEmpty) {
+      return;
+    }
+
+    final normalizedKeywords = keywords
+        .map((keyword) => keyword.trim())
+        .where((keyword) => keyword.isNotEmpty)
+        .toSet();
+
+    if (normalizedKeywords.isEmpty) {
+      return;
+    }
+
+    final dedupedDiseases = <String, Map<String, dynamic>>{};
+    for (final disease in diseases) {
+      final rawName = disease['질환명'];
+      if (rawName == null) continue;
+      final name = rawName.toString().trim();
+      if (name.isEmpty) continue;
+      dedupedDiseases[name] = disease;
+    }
+
+    if (dedupedDiseases.isEmpty) {
+      return;
+    }
+
+    for (final keyword in normalizedKeywords) {
+      final matched = <String, Map<String, dynamic>>{};
+
+      for (final entry in dedupedDiseases.entries) {
+        final attribute = entry.value[attributeKey];
+
+        if (attribute is String) {
+          if (attribute.trim() == keyword) {
+            matched[entry.key] = entry.value;
+          }
+        } else if (attribute is Iterable) {
+          final values = attribute
+              .map((value) => value.toString().trim())
+              .where((value) => value.isNotEmpty)
+              .toSet();
+
+          if (values.contains(keyword)) {
+            matched[entry.key] = entry.value;
+          }
+        }
+      }
+
+      if (matched.isNotEmpty) {
+        addDiseaseScores(matched.values, score: scorePerKeyword);
+      }
+    }
+  }
+
   void printScoreTotals() {
   if (_diseaseScoreTotals.isEmpty) {
     print("\n질병 점수 총합: 데이터 없음");

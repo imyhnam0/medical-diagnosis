@@ -77,9 +77,52 @@ class _AggravatingPageState extends State<AggravatingPage> {
   Future<void> _goToNextStep() async {
     if (!_canProceedNext) return;
 
-    if (_pendingDiseases.isNotEmpty) {
+    final keywords = _matchedKeywords
+        .map((keyword) => keyword.trim())
+        .where((keyword) => keyword.isNotEmpty)
+        .toList();
+
+    if (_pendingDiseases.isNotEmpty && keywords.isNotEmpty) {
       final manager = DiseaseDataManager();
-      manager.addDiseaseScores(_pendingDiseases);
+      manager.addScoresForKeywordMatches(
+        diseases: _pendingDiseases,
+        keywords: keywords,
+        attributeKey: '악화 요인',
+      );
+
+      final dedupedDiseases = <String, Map<String, dynamic>>{
+        for (final disease in _pendingDiseases)
+          (disease['질환명']?.toString() ?? jsonEncode(disease)): disease,
+      };
+      final keywordMatches = <String, List<String>>{};
+
+      for (final keyword in keywords) {
+        final matched = <String>[];
+
+        for (final entry in dedupedDiseases.entries) {
+          final aggravating = entry.value['악화 요인'];
+          if (aggravating is String) {
+            if (aggravating.trim() == keyword) {
+              matched.add(entry.key);
+            }
+          } else if (aggravating is Iterable) {
+            final values = aggravating
+                .map((value) => value.toString().trim())
+                .where((value) => value.isNotEmpty)
+                .toSet();
+            if (values.contains(keyword)) {
+              matched.add(entry.key);
+            }
+          }
+        }
+
+        if (matched.isNotEmpty) {
+          keywordMatches[keyword] = matched;
+        }
+      }
+
+      manager.printScoreTotals();
+      debugPrint("🧩 악화 요인별 점수 누적 현황: $keywordMatches");
     }
 
     if (!mounted) return;
