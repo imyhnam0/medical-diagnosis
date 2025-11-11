@@ -6,7 +6,9 @@ import 'DiseaseDataManager.dart';
 import 'AggravatingPage.dart';
 
 class YourDiseasePage extends StatefulWidget {
-  const YourDiseasePage({super.key});
+  final String? followUpQuestion;
+
+  const YourDiseasePage({super.key, this.followUpQuestion});
 
   @override
   State<YourDiseasePage> createState() => _YourDiseasePageState();
@@ -193,10 +195,8 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
         final diseases = List<Map<String, dynamic>>.from(data["diseases"] ?? []);
 
         final manager = DiseaseDataManager();
-        manager.setSymptomKeywords(symptoms);
-        manager.setSymptomDiseases(diseases);
-
-        manager.printAllData();
+        
+        manager.addDiseaseScores(diseases);
 
         return symptoms;
       } else {
@@ -450,6 +450,17 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
 
 
 
+  String _buildFollowUpText() {
+    const defaultText = "가슴이 아픈게 어떻게 아프시고\n관련된 증상이 더 있나요";
+    final question = widget.followUpQuestion?.trim();
+
+    if (question == null || question.isEmpty) {
+      return defaultText;
+    }
+
+    return question;
+  }
+
   @override
   Widget build(BuildContext context) {
     final primaryColor = const Color(0xFF0F4C75); // main.dart와 동일한 색상
@@ -489,7 +500,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
         child: Column(
           children: [
             // AI 기반 증상 매칭 시스템 안내
-            
+          
 
             // 증상 입력 섹션
             Container(
@@ -523,12 +534,16 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
                         size: 20,
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        "가슴이 아픈게 어떻게 아프시고 관련된 증상이 더 있나요",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: primaryColor,
+                      Flexible(
+                        child: Text(
+                          _buildFollowUpText(),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: primaryColor,
+                          ),
+                          softWrap: true,
+                          overflow: TextOverflow.visible,
                         ),
                       ),
                     ],
@@ -812,13 +827,13 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
                 print("✅ 선택된 증상 리스트: $selectedSymptoms");
 
 
-                // 🔹 다음 단계로 이동
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const AggravatingPage(), // or 다음 페이지
-                  ),
-                );
+                // // 🔹 다음 단계로 이동
+                // Navigator.push(
+                //   context,
+                //   MaterialPageRoute(
+                //     builder: (context) => const AggravatingPage(), // or 다음 페이지
+                //   ),
+                // );
               },
 
               child: selectedSymptoms.isEmpty

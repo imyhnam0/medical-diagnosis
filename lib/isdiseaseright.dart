@@ -64,11 +64,14 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
       if (result["result"] == "TRUE") {
         print("✅ 흉통 관련 증상으로 판단됨");
         print("📝 유사한 문장: ${result["similar"]}");
-
-        // 흉통 관련 증상이면 바로 YourDiseasePage로 이동
+        final followUpQuestion = (result["followUpQuestion"] as String?)?.trim();
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => YourDiseasePage()),
+          MaterialPageRoute(
+            builder: (_) => YourDiseasePage(
+              followUpQuestion: followUpQuestion,
+            ),
+          ),
         );
       } else {
         print("❌ 흉통 관련이 아닌 것으로 판단됨");
