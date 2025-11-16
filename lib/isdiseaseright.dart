@@ -17,8 +17,9 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
   final ScrollController _scrollController = ScrollController();
   bool _isLoading = false;
 
+  /// @analzeChestPain.js 를 참고하여, 흉통 증상과 유사 여부/유사문장/후속질문 반환 받음
   Future<Map<String, dynamic>> checkChestPain(String input) async {
-    final url = Uri.parse("http://localhost:8080/api/analyze/chestpain"); // Node.js 서버 주소
+    final url = Uri.parse("http://localhost:3000/api/analyze/chestpain"); // Node.js 백엔드 주소
 
     try {
       final response = await http.post(
@@ -30,7 +31,12 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         print("🤖 서버 응답: $data");
-        return data;
+        // 분석 실패 등이 아니라면, 정상 반환(response 구조: result(=TRUE/FALSE), similar, followUpQuestion)
+        return {
+          "result": data["result"],
+          "similar": data["similar"],
+          "followUpQuestion": data["followUpQuestion"]
+        };
       } else {
         print("⚠️ 서버 오류: ${response.statusCode}");
         return {"result": "FALSE"};
@@ -41,8 +47,7 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
     }
   }
 
-
-  /// ✅ “확인” 버튼 클릭
+  /// ✅ “AI로 증상 분석하기” 버튼 클릭시
   Future<void> _onCheckPressed(BuildContext context) async {
     final input = _controller.text.trim();
     if (input.isEmpty) {
@@ -64,14 +69,14 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
       if (result["result"] == "TRUE") {
         print("✅ 흉통 관련 증상으로 판단됨");
         print("📝 유사한 문장: ${result["similar"]}");
-        final followUpQuestion = (result["followUpQuestion"] as String?)?.trim();
-        final similarSentence = (result["similar"] as String?)?.trim();
+        final followUpQuestion = (result["followUpQuestion"] as String?)?.trim() ?? "";
+        final similarSentence = (result["similar"] as String?)?.trim() ?? "";
+
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => YourDiseasePage(
               followUpQuestion: followUpQuestion,
-              similarSentence: similarSentence,
             ),
           ),
         );

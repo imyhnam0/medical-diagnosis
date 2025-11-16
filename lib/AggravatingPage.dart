@@ -1,430 +1,484 @@
 import 'package:flutter/material.dart';
-import 'RiskFactorPage.dart';
-import 'DiseaseDataManager.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class AggravatingPage extends StatefulWidget {
-  final Map<String, dynamic>? personalInfo;
-  const AggravatingPage({super.key, this.personalInfo});
+  const AggravatingPage({super.key});
 
   @override
   State<AggravatingPage> createState() => _AggravatingPageState();
 }
 
 class _AggravatingPageState extends State<AggravatingPage> {
-  final TextEditingController _controller = TextEditingController();
-  bool _isLoading = false;
-  final Set<String> _matchedKeywords = {};
-  List<Map<String, dynamic>> _pendingDiseases = [];
-  bool _canProceedNext = false;
+  final TextEditingController _inputController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
 
-  Future<void> _analyzeInput(String input) async {
-    if (input.trim().isEmpty) return;
-    setState(() => _isLoading = true);
+  bool _isLoading = false;
+  List<String> _extractedKeywords = [];
+  String? _currentQuestion;
+  bool _isComplete = false;
+  List<Map<String, String>> _conversationHistory = [];
+  int _currentQuestionIndex = 0; // 질문 인덱스
+
+  static const List<String> _questions = [
+    "어떤 상황에서 증상이 더 심해지나요? (예: 움직이거나 눕거나 추울 때 등)",
+    "특정 음식, 자세, 환경, 감정 상태가 증상을 악화시키나요?",
+    "운동, 스트레스, 기침, 깊은 숨 들이쉬기 같은 행동이 증상에 영향을 주나요?",
+    "계절, 온도 변화, 날씨, 공기 등의 외부 환경 요인이 증상을 악화시키나요?",
+  ];
+
+  final primaryColor = const Color(0xFF0F4C75);
+  final secondaryColor = const Color(0xFF3282B8);
+
+  @override
+  void initState() {
+    super.initState();
+    _currentQuestion = _questions[0];
+    _conversationHistory.add({
+      "role": "assistant",
+      "content": _currentQuestion!,
+    });
+  }
+
+  @override
+  void dispose() {
+    _inputController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _analyzeAggravation() async {
+    final input = _inputController.text.trim();
+
+    if (input.isEmpty) {
+      _showSnackBar("답변을 입력해주세요.");
+      return;
+    }
+
+    if (_currentQuestionIndex >= _questions.length) {
+      _showSnackBar("모든 질문에 답변하셨습니다.");
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    final currentQuestion = _questions[_currentQuestionIndex];
+
+    // 대화 기록에 사용자 입력 추가
+    _conversationHistory.add({
+      "role": "user",
+      "content": input,
+    });
 
     try {
-      // ✅ Node.js 서버 호출
+      final url = Uri.parse(
+        "http://localhost:3000/api/analyze/aggravation"
+      );
+
+      final payload = {
+        "question": currentQuestion,
+        "answer": input,
+        "questionIndex": _currentQuestionIndex,
+      };
+
+      print("📤 요청 전송: $payload");
+
       final response = await http.post(
-        Uri.parse("http://localhost:8080/api/analyze/aggravation"),
+        url,
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"aggravateDiseaseInput": input}),
+        body: jsonEncode(payload),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        final keywords = List<String>.from(data["keywords"] ?? []);
 
-        final matched = List<String>.from(data["matchedKeywords"] ?? []);
-        final diseases = List<Map<String, dynamic>>.from(data["diseases"] ?? []);
-
-        if (matched.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("악화 요인을 추출하지 못했습니다.")),
-          );
-        }
-
-        setState(() {
-          _matchedKeywords
-            ..clear()
-            ..addAll(matched);
-          _pendingDiseases = diseases;
-          _canProceedNext = true;
-        });
-
-        setState(() => _isLoading = false);
-      } else {
-        print("⚠️ 서버 오류: ${response.statusCode}");
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("서버 오류가 발생했습니다 (${response.statusCode})"),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-        setState(() => _isLoading = false);
-      }
-    } catch (e) {
-      print("❌ 악화 요인 분석 중 오류: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("서버 연결 오류: $e"),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _goToNextStep() async {
-    if (!_canProceedNext) return;
-
-    final keywords = _matchedKeywords
-        .map((keyword) => keyword.trim())
-        .where((keyword) => keyword.isNotEmpty)
-        .toList();
-
-    if (_pendingDiseases.isNotEmpty && keywords.isNotEmpty) {
-      final manager = DiseaseDataManager();
-      manager.addScoresForKeywordMatches(
-        diseases: _pendingDiseases,
-        keywords: keywords,
-        attributeKey: '악화 요인',
-      );
-
-      final dedupedDiseases = <String, Map<String, dynamic>>{
-        for (final disease in _pendingDiseases)
-          (disease['질환명']?.toString() ?? jsonEncode(disease)): disease,
-      };
-      final keywordMatches = <String, List<String>>{};
-
-      for (final keyword in keywords) {
-        final matched = <String>[];
-
-        for (final entry in dedupedDiseases.entries) {
-          final aggravating = entry.value['악화 요인'];
-          if (aggravating is String) {
-            if (aggravating.trim() == keyword) {
-              matched.add(entry.key);
-            }
-          } else if (aggravating is Iterable) {
-            final values = aggravating
-                .map((value) => value.toString().trim())
-                .where((value) => value.isNotEmpty)
-                .toSet();
-            if (values.contains(keyword)) {
-              matched.add(entry.key);
-            }
+        // 키워드가 있으면 추가
+        for (final keyword in keywords) {
+          if (!_extractedKeywords.contains(keyword)) {
+            setState(() {
+              _extractedKeywords.add(keyword);
+            });
           }
         }
 
-        if (matched.isNotEmpty) {
-          keywordMatches[keyword] = matched;
+        // 다음 질문으로 이동
+        _currentQuestionIndex++;
+
+        if (_currentQuestionIndex < _questions.length) {
+          final nextQuestion = _questions[_currentQuestionIndex];
+          setState(() {
+            _currentQuestion = nextQuestion;
+          });
+
+          // 대화 기록에 다음 질문 추가
+          _conversationHistory.add({
+            "role": "assistant",
+            "content": nextQuestion,
+          });
+        } else {
+          // 모든 질문 완료
+          setState(() {
+            _isComplete = true;
+            _currentQuestion = null;
+          });
         }
+
+        // 입력 필드 초기화
+        _inputController.clear();
+
+        // 스크롤을 맨 아래로
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollController.hasClients) {
+            _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
+        });
+      } else {
+        _showSnackBar("서버 오류가 발생했습니다. (${response.statusCode})");
+        print("⚠️ 서버 오류: ${response.statusCode} - ${response.body}");
       }
-
-      manager.printScoreTotals();
-      debugPrint("🧩 악화 요인별 점수 누적 현황: $keywordMatches");
+    } catch (e) {
+      _showSnackBar("분석 중 오류가 발생했습니다: $e");
+      print("❌ 분석 오류: $e");
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
-
-    if (!mounted) return;
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => RiskFactorPage(personalInfo: widget.personalInfo),
-      ),
-    );
-
-    if (!mounted) return;
-    setState(() {
-      _canProceedNext = false;
-    });
   }
 
+  void _showSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: primaryColor,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = const Color(0xFF0F4C75);
-    final secondaryColor = const Color(0xFF3282B8);
-    final accentColor = const Color(0xFFBBE1FA);
-
     return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
-        title: const Text("흉통 악화 요인"),
-        backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
+        centerTitle: true,
         elevation: 0,
-      ),
-      body: Container
-      (
-        width: double.infinity,
-        height: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [primaryColor, secondaryColor, accentColor],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            stops: const [0.0, 0.55, 1.0],
+        backgroundColor: Colors.transparent,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [primaryColor, secondaryColor],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
           ),
         ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            physics: const BouncingScrollPhysics(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.12),
-                        blurRadius: 18,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [primaryColor, secondaryColor],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(Icons.troubleshoot, color: Colors.white),
+        title: const Text(
+          "흉통 악화 요인 분석",
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+            fontSize: 20,
+            letterSpacing: 0.5,
+          ),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: Column(
+        children: [
+          // 대화 및 결과 영역
+          Expanded(
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // 대화 기록 표시
+                  ..._conversationHistory.map((message) {
+                    final isUser = message["role"] == "user";
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Align(
+                        alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                        child: Container(
+                          constraints: BoxConstraints(
+                            maxWidth: MediaQuery.of(context).size.width * 0.75,
                           ),
-                          const SizedBox(width: 12),
-                          const Expanded(
-                            child: Text(
-                              "어떤 상황에서 증상이 더 심해지나요?",
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF1A202C),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isUser
+                                ? primaryColor
+                                : Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.withOpacity(0.1),
+                                blurRadius: 5,
+                                offset: const Offset(0, 2),
                               ),
+                            ],
+                            border: !isUser
+                                ? Border.all(
+                                    color: primaryColor.withOpacity(0.2),
+                                    width: 1,
+                                  )
+                                : null,
+                          ),
+                          child: Text(
+                            message["content"] ?? "",
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: isUser ? Colors.white : Colors.black87,
+                              height: 1.4,
                             ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+
+                  // 추출된 키워드 표시
+                  if (_extractedKeywords.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      margin: const EdgeInsets.only(top: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.1),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                        border: Border.all(
+                          color: primaryColor.withOpacity(0.1),
+                          width: 1,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                _isComplete ? Icons.check_circle : Icons.info,
+                                color: _isComplete ? Colors.green : primaryColor,
+                                size: 24,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                "추출된 키워드",
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: primaryColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: _extractedKeywords.map((keyword) {
+                              return Chip(
+                                label: Text(
+                                  keyword,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                backgroundColor: primaryColor.withOpacity(0.1),
+                                side: BorderSide(color: primaryColor.withOpacity(0.3)),
+                                labelStyle: TextStyle(color: primaryColor),
+                              );
+                            }).toList(),
                           ),
                         ],
                       ),
+                    ),
+                ],
+              ),
+            ),
+          ),
 
-                      const SizedBox(height: 16),
-
-                      Text(
-                        "예: 계단 오를 때, 깊게 숨쉴 때, 기침할 때, 식후, 스트레스 등",
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[600],
-                        ),
+          // 입력 영역
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                // 현재 질문 표시
+                if (_currentQuestion != null && !_isComplete)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: primaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: primaryColor.withOpacity(0.3),
+                        width: 1,
                       ),
-
-                      const SizedBox(height: 12),
-
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.grey[50],
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: primaryColor.withOpacity(0.15)),
-                        ),
-                        child: TextField(
-                          controller: _controller,
-                          maxLines: 3,
-                          decoration: InputDecoration(
-                            hintText: "예: 계단 오를 때 더 아파요, 깊게 숨쉬면 심해져요",
-                            hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-                            prefixIcon: Icon(Icons.trending_up, color: primaryColor),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: BorderSide.none,
-                            ),
-                            filled: true,
-                            fillColor: Colors.transparent,
-                            contentPadding: const EdgeInsets.all(16),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      SizedBox(
-                        width: double.infinity,
-                        height: 52,
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryColor,
-                            foregroundColor: Colors.white,
-                            elevation: 2,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                          ),
-                          onPressed: _isLoading
-                              ? null
-                              : () => _analyzeInput(_controller.text),
-                          icon: _isLoading
-                              ? const SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.5,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Icon(Icons.auto_awesome),
-                          label: Text(
-                            _isLoading ? "분석 중..." : "AI로 분석",
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      if (_matchedKeywords.isNotEmpty)
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "추출된 악화 요인",
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                                color: primaryColor,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: _matchedKeywords.map((keyword) {
-                                return Chip(
-                                  label: Text(
-                                    keyword,
-                                    style: TextStyle(
-                                      color: primaryColor,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  backgroundColor: primaryColor.withOpacity(0.12),
-                                );
-                              }).toList(),
-                            ),
-                          ],
-                        ),
-                      if (_matchedKeywords.isEmpty && !_isLoading)
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 20,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: primaryColor.withOpacity(0.15),
-                            ),
-                          ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.help_outline, color: primaryColor, size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(
                           child: Text(
-                            "AI 분석 결과가 여기에 표시됩니다.",
+                            _currentQuestion!,
                             style: TextStyle(
-                              color: Colors.grey[600],
                               fontSize: 14,
+                              color: primaryColor,
+                              fontWeight: FontWeight.w500,
+                              height: 1.4,
                             ),
-                            textAlign: TextAlign.center,
                           ),
                         ),
-                    ],
+                      ],
+                    ),
+                  ),
+
+                // 완료 메시지
+                if (_isComplete)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.green.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.check_circle, color: Colors.green, size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            "모든 질문에 답변하셨습니다.",
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.green[700],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                // 입력 필드
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: primaryColor.withOpacity(0.2),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: TextFormField(
+                    controller: _inputController,
+                    maxLines: 3,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      height: 1.5,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: _isComplete
+                          ? "모든 질문에 답변하셨습니다"
+                          : "답변을 입력하세요",
+                      hintStyle: TextStyle(
+                        color: Colors.grey[500],
+                        fontSize: 14,
+                        height: 1.5,
+                      ),
+                      enabled: !_isComplete,
+                      prefixIcon: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Icon(Icons.chat_bubble_outline, color: primaryColor, size: 24),
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(color: primaryColor, width: 2),
+                      ),
+                      filled: true,
+                      fillColor: Colors.transparent,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 20,
+                      ),
+                      suffixIcon: _isLoading
+                          ? const Padding(
+                              padding: EdgeInsets.all(16.0),
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            )
+                          : IconButton(
+                              icon: Icon(Icons.send, color: _isComplete ? Colors.grey : primaryColor),
+                              onPressed: (_isLoading || _isComplete) ? null : _analyzeAggravation,
+                            ),
+                    ),
+                    onFieldSubmitted: (_) {
+                      if (!_isLoading && !_isComplete) {
+                        _analyzeAggravation();
+                      }
+                    },
                   ),
                 ),
               ],
             ),
           ),
-        ),
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 12,
-                offset: const Offset(0, -3),
-              ),
-            ],
-          ),
-          child: SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: ElevatedButton(
-              onPressed: _canProceedNext ? _goToNextStep : null,
-              style: ElevatedButton.styleFrom(
-                elevation: _canProceedNext ? 4 : 0,
-                backgroundColor:
-                    _canProceedNext ? Colors.transparent : Colors.grey[300],
-                shadowColor:
-                    _canProceedNext ? Colors.black26 : Colors.transparent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                padding: EdgeInsets.zero,
-              ),
-              child: _canProceedNext
-                  ? Ink(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [primaryColor, secondaryColor],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Container(
-                        alignment: Alignment.center,
-                        child: Text(
-                          "다음 단계로 (${_matchedKeywords.length}개 악화 요인)",
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    )
-                  : Container(
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: const Text(
-                        "AI 분석을 완료하면 다음 단계로 이동할 수 있어요",
-                        style: TextStyle(
-                          color: Colors.black54,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                        ),
-                      ),
-                    ),
-            ),
-          ),
-        ),
+        ],
       ),
     );
   }
 }
+

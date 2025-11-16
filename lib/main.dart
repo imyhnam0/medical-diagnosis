@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
-import 'PersonalInfo.dart';
 import 'isdiseaseright.dart';
 import 'AggravatingPage.dart';
 import 'RiskFactorPage.dart';
 import 'PastDisease.dart';
 import 'yourdisease.dart';
 import 'isdiseaseright.dart';
+import 'package:http/http.dart' as http;
+import 'AgePage.dart';
+import 'Drinking_smoking.dart';
+import 'JopPage.dart';
+import 'Exercise_stress.dart';
+import 'PastDisease.dart';
+import 'isdiseaseright.dart';
+import 'AggravatingPage.dart';
 
 
 void main() async {
@@ -27,7 +34,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueAccent),
         useMaterial3: true,
       ),
-      home: const HomeBackground(),
+      home: const RiskFactorPage(),
     );
   }
 }
@@ -89,6 +96,17 @@ class _HomeBackgroundState extends State<HomeBackground>
       _slideController.forward();
     });
   }
+  Future<void> _prewarmLambda() async {
+  try {
+    await http.get(
+      Uri.parse("https://w3umyrnbnctuyfa27xhg6bsz5e0nzdsb.lambda-url.us-east-1.on.aws/ping"),
+    );
+    print("✅ Lambda prewarmed");
+  } catch (e) {
+    print("⚠️ Prewarm failed: $e");
+  }
+  }
+  
 
   @override
   void dispose() {
@@ -573,7 +591,7 @@ class _ConsentPageState extends State<ConsentPage>
                             Navigator.pop(context);
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => const PersonalInfoPage())
+                              MaterialPageRoute(builder: (context) => const AgePage())
                             );
                           },
                           style: ElevatedButton.styleFrom(

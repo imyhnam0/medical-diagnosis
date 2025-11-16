@@ -2,27 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-class YourDiseasePage extends StatefulWidget {
-  final String followUpQuestion;
-  const YourDiseasePage({super.key, required this.followUpQuestion});
+class JobPage extends StatefulWidget {
+  const JobPage({super.key});
 
   @override
-  State<YourDiseasePage> createState() => _YourDiseasePageState();
+  State<JobPage> createState() => _JobPageState();
 }
 
-class _YourDiseasePageState extends State<YourDiseasePage> {
+class _JobPageState extends State<JobPage> {
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-
+  
   bool _isLoading = false;
-  List<String> _extractedKeywords = [];
+  List<String> _extractedKeywords = []; 
   String? _currentQuestion;
   bool _isComplete = false;
   List<Map<String, String>> _conversationHistory = [];
-  int _currentQuestionIndex = 0; // 0: 최초 질문
-
-  // followUpQuestion이 첫번째 질문이 되고, 이후 추가 질문은 여기서 관리
-  late final List<String> _questions;
+  int _currentQuestionIndex = 0; // 0: 현재 직업, 1: 작업 환경
+  
+  static const List<String> _questions = [
+    "현재 어떤 일을 하고 계신가요?",
+    "일하실 때 주로 어떤 환경에서 일하시나요?\n(예: 앉아서, 서서, 야외에서, 무거운 물건을 자주 드는지 등)",
+  ];
 
   final primaryColor = const Color(0xFF0F4C75);
   final secondaryColor = const Color(0xFF3282B8);
@@ -30,16 +31,6 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
   @override
   void initState() {
     super.initState();
-
-    // 질문 리스트를 followUpQuestion으로 시작하도록 설정
-    _questions = [
-      widget.followUpQuestion,
-      "통증이 있다면 어떤 느낌인가요? (예: 쿡쿡, 짓눌림, 화끈거림, 찢어질 듯 등)",
-      "통증은 언제부터 시작됐나요? 그리고 어떤 상황에서 더 심해지나요? (운동, 숨쉬기, 기침, 식사 후, 스트레스 등)",
-      "숨이 차거나 숨쉬기 어렵거나, 식은땀/어지럼/메스꺼움 같은 증상이 함께 있나요?",
-      "지금까지 말한 증상말고 다른 증상이 있나요?"
-    ];
-
     _currentQuestion = _questions[0];
     _conversationHistory.add({
       "role": "assistant",
@@ -54,7 +45,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
     super.dispose();
   }
 
-  Future<void> _analyzeDisease() async {
+  Future<void> _analyzeJob() async {
     final input = _inputController.text.trim();
 
     if (input.isEmpty) {
@@ -81,7 +72,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
 
     try {
       final url = Uri.parse(
-        "http://localhost:3000/api/analyze/symptoms"
+        "http://localhost:3000/api/analyze/job"
       );
 
       final payload = {
@@ -101,7 +92,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final keywords = List<String>.from(data["keywords"] ?? []);
-
+        
         // 키워드가 있으면 추가
         for (final keyword in keywords) {
           if (!_extractedKeywords.contains(keyword)) {
@@ -113,13 +104,13 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
 
         // 다음 질문으로 이동
         _currentQuestionIndex++;
-
+        
         if (_currentQuestionIndex < _questions.length) {
           final nextQuestion = _questions[_currentQuestionIndex];
           setState(() {
             _currentQuestion = nextQuestion;
           });
-
+          
           // 대화 기록에 다음 질문 추가
           _conversationHistory.add({
             "role": "assistant",
@@ -191,7 +182,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
           ),
         ),
         title: const Text(
-          "증상 분석",
+          "직업 분석",
           style: TextStyle(
             fontWeight: FontWeight.w600,
             color: Colors.white,
@@ -217,6 +208,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
                   // 대화 기록 표시
                   ..._conversationHistory.map((message) {
                     final isUser = message["role"] == "user";
+
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: Align(
@@ -427,7 +419,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
                       height: 1.5,
                     ),
                     decoration: InputDecoration(
-                      hintText: _isComplete
+                      hintText: _isComplete 
                           ? "모든 질문에 답변하셨습니다"
                           : "답변을 입력하세요",
                       hintStyle: TextStyle(
@@ -469,12 +461,12 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
                             )
                           : IconButton(
                               icon: Icon(Icons.send, color: _isComplete ? Colors.grey : primaryColor),
-                              onPressed: (_isLoading || _isComplete) ? null : _analyzeDisease,
+                              onPressed: (_isLoading || _isComplete) ? null : _analyzeJob,
                             ),
                     ),
                     onFieldSubmitted: (_) {
                       if (!_isLoading && !_isComplete) {
-                        _analyzeDisease();
+                        _analyzeJob();
                       }
                     },
                   ),
@@ -487,3 +479,4 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
     );
   }
 }
+

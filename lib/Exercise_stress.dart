@@ -2,15 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-class YourDiseasePage extends StatefulWidget {
-  final String followUpQuestion;
-  const YourDiseasePage({super.key, required this.followUpQuestion});
+class ExerciseStressPage extends StatefulWidget {
+  const ExerciseStressPage({super.key});
 
   @override
-  State<YourDiseasePage> createState() => _YourDiseasePageState();
+  State<ExerciseStressPage> createState() => _ExerciseStressPageState();
 }
 
-class _YourDiseasePageState extends State<YourDiseasePage> {
+class _ExerciseStressPageState extends State<ExerciseStressPage> {
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
@@ -19,10 +18,13 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
   String? _currentQuestion;
   bool _isComplete = false;
   List<Map<String, String>> _conversationHistory = [];
-  int _currentQuestionIndex = 0; // 0: 최초 질문
+  int _currentQuestionIndex = 0;
 
-  // followUpQuestion이 첫번째 질문이 되고, 이후 추가 질문은 여기서 관리
-  late final List<String> _questions;
+  static const List<String> _questions = [
+    "평소 생활에서 운동이나 신체활동은 어느 정도 하시나요?",
+    "최근 스트레스를 느끼는 일이 있었나요? 구체적으로 말씀해주실 수 있을까요?",
+    "스트레스를 받으면 보통 어떻게 반응하시나요? 해결하려고 하나요? 아니면 피하거나 무기력해지나요?",
+  ];
 
   final primaryColor = const Color(0xFF0F4C75);
   final secondaryColor = const Color(0xFF3282B8);
@@ -30,16 +32,6 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
   @override
   void initState() {
     super.initState();
-
-    // 질문 리스트를 followUpQuestion으로 시작하도록 설정
-    _questions = [
-      widget.followUpQuestion,
-      "통증이 있다면 어떤 느낌인가요? (예: 쿡쿡, 짓눌림, 화끈거림, 찢어질 듯 등)",
-      "통증은 언제부터 시작됐나요? 그리고 어떤 상황에서 더 심해지나요? (운동, 숨쉬기, 기침, 식사 후, 스트레스 등)",
-      "숨이 차거나 숨쉬기 어렵거나, 식은땀/어지럼/메스꺼움 같은 증상이 함께 있나요?",
-      "지금까지 말한 증상말고 다른 증상이 있나요?"
-    ];
-
     _currentQuestion = _questions[0];
     _conversationHistory.add({
       "role": "assistant",
@@ -54,7 +46,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
     super.dispose();
   }
 
-  Future<void> _analyzeDisease() async {
+  Future<void> _analyzeExerciseStress() async {
     final input = _inputController.text.trim();
 
     if (input.isEmpty) {
@@ -73,7 +65,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
 
     final currentQuestion = _questions[_currentQuestionIndex];
 
-    // 대화 기록에 사용자 입력 추가
+    // Add user's answer to conversation history
     _conversationHistory.add({
       "role": "user",
       "content": input,
@@ -81,7 +73,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
 
     try {
       final url = Uri.parse(
-        "http://localhost:3000/api/analyze/symptoms"
+        "http://localhost:3000/api/analyze/exercise-stress"
       );
 
       final payload = {
@@ -120,23 +112,20 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
             _currentQuestion = nextQuestion;
           });
 
-          // 대화 기록에 다음 질문 추가
+          // Add the next question to conversation history
           _conversationHistory.add({
             "role": "assistant",
             "content": nextQuestion,
           });
         } else {
-          // 모든 질문 완료
           setState(() {
             _isComplete = true;
             _currentQuestion = null;
           });
         }
 
-        // 입력 필드 초기화
         _inputController.clear();
 
-        // 스크롤을 맨 아래로
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (_scrollController.hasClients) {
             _scrollController.animateTo(
@@ -191,7 +180,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
           ),
         ),
         title: const Text(
-          "증상 분석",
+          "운동 및 스트레스 분석",
           style: TextStyle(
             fontWeight: FontWeight.w600,
             color: Colors.white,
@@ -438,7 +427,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
                       enabled: !_isComplete,
                       prefixIcon: Padding(
                         padding: const EdgeInsets.all(16.0),
-                        child: Icon(Icons.chat_bubble_outline, color: primaryColor, size: 24),
+                        child: Icon(Icons.fitness_center, color: primaryColor, size: 24),
                       ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
@@ -469,12 +458,12 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
                             )
                           : IconButton(
                               icon: Icon(Icons.send, color: _isComplete ? Colors.grey : primaryColor),
-                              onPressed: (_isLoading || _isComplete) ? null : _analyzeDisease,
+                              onPressed: (_isLoading || _isComplete) ? null : _analyzeExerciseStress,
                             ),
                     ),
                     onFieldSubmitted: (_) {
                       if (!_isLoading && !_isComplete) {
-                        _analyzeDisease();
+                        _analyzeExerciseStress();
                       }
                     },
                   ),
