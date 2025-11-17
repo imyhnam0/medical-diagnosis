@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'Drinking_smoking.dart';
 
 class AgePage extends StatefulWidget {
   const AgePage({super.key});
@@ -18,6 +19,7 @@ class _AgePageState extends State<AgePage> {
   bool _isLoading = false;
   List<String> _matchedKeywords = [];
   double? _calculatedBmi;
+  bool _canProceed = false;
 
   final primaryColor = const Color(0xFF0F4C75);
   final secondaryColor = const Color(0xFF3282B8);
@@ -123,6 +125,7 @@ class _AgePageState extends State<AgePage> {
         
         setState(() {
           _matchedKeywords = keywords;
+          _canProceed = true;
         });
 
         if (keywords.isEmpty) {
@@ -383,6 +386,35 @@ class _AgePageState extends State<AgePage> {
                               ),
                       ),
                     ),
+              const SizedBox(height: 12),
+              // 다음으로 버튼
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: _canProceed
+                      ? () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const DrinkingSmokingPage()),
+                          );
+                        }
+                      : null,
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    side: BorderSide(color: _canProceed ? primaryColor : Colors.grey.shade400, width: 1.5),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    foregroundColor: _canProceed ? primaryColor : Colors.grey,
+                  ),
+                  child: Text(
+                    "다음으로",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: _canProceed ? primaryColor : Colors.grey,
+                    ),
+                  ),
+                ),
+              ),
                   ],
                 ),
               ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'RiskFactorPage.dart';
 
 class AggravatingPage extends StatefulWidget {
   const AggravatingPage({super.key});
@@ -19,6 +20,7 @@ class _AggravatingPageState extends State<AggravatingPage> {
   bool _isComplete = false;
   List<Map<String, String>> _conversationHistory = [];
   int _currentQuestionIndex = 0; // 질문 인덱스
+  bool _canProceed = false;
 
   static const List<String> _questions = [
     "어떤 상황에서 증상이 더 심해지나요? (예: 움직이거나 눕거나 추울 때 등)",
@@ -123,6 +125,7 @@ class _AggravatingPageState extends State<AggravatingPage> {
           setState(() {
             _isComplete = true;
             _currentQuestion = null;
+            _canProceed = true;
           });
         }
 
@@ -184,7 +187,7 @@ class _AggravatingPageState extends State<AggravatingPage> {
           ),
         ),
         title: const Text(
-          "흉통 악화 요인 분석",
+          "악화 요인 분석",
           style: TextStyle(
             fontWeight: FontWeight.w600,
             color: Colors.white,
@@ -471,6 +474,35 @@ class _AggravatingPageState extends State<AggravatingPage> {
                         _analyzeAggravation();
                       }
                     },
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // 다음으로 버튼 (모든 질문 완료 시 활성화)
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: _canProceed
+                        ? () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const RiskFactorPage()),
+                            );
+                          }
+                        : null,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      side: BorderSide(color: _canProceed ? primaryColor : Colors.grey.shade400, width: 1.5),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      foregroundColor: _canProceed ? primaryColor : Colors.grey,
+                    ),
+                    child: Text(
+                      "다음으로",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: _canProceed ? primaryColor : Colors.grey,
+                      ),
+                    ),
                   ),
                 ),
               ],

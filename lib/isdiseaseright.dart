@@ -70,13 +70,13 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
         print("✅ 흉통 관련 증상으로 판단됨");
         print("📝 유사한 문장: ${result["similar"]}");
         final followUpQuestion = (result["followUpQuestion"] as String?)?.trim() ?? "";
-        final similarSentence = (result["similar"] as String?)?.trim() ?? "";
 
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => YourDiseasePage(
               followUpQuestion: followUpQuestion,
+              initialUserInput: input,
             ),
           ),
         );

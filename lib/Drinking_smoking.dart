@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'JobPage.dart';
 
 class DrinkingSmokingPage extends StatefulWidget {
   const DrinkingSmokingPage({super.key});
@@ -18,16 +19,12 @@ class _DrinkingSmokingPageState extends State<DrinkingSmokingPage> {
   String? _currentQuestion;
   bool _isComplete = false;
   List<Map<String, String>> _conversationHistory = [];
-  int _currentQuestionIndex = 0; // 0: 음주, 1: 흡연
-  
+  int _currentQuestionIndex = 0; // 0: 음주 빈도, 1: 흡연 여부 등
+  bool _canProceed = false;
+
   static const List<String> _questions = [
-    "평소에 술은 어느 정도 드시나요?",
-    "혹시 담배는 피우시나요?",
-  ];
-  
-  static const List<String> _targetKeywords = [
-    "음주",
-    "흡연",
+    "평소에 얼마나 자주 음주를 하시나요?\n(예: 일주일에 몇 번, 한 번에 어느 정도 등)",
+    "흡연을 하시나요? 혹은 주위에 흡연하는 사람이 있나요?\n(예: 네,아니요 등)",
   ];
 
   final primaryColor = const Color(0xFF0F4C75);
@@ -68,7 +65,6 @@ class _DrinkingSmokingPageState extends State<DrinkingSmokingPage> {
     });
 
     final currentQuestion = _questions[_currentQuestionIndex];
-    final targetKeyword = _targetKeywords[_currentQuestionIndex];
 
     // 대화 기록에 사용자 입력 추가
     _conversationHistory.add({
@@ -84,7 +80,7 @@ class _DrinkingSmokingPageState extends State<DrinkingSmokingPage> {
       final payload = {
         "question": currentQuestion,
         "answer": input,
-        "targetKeyword": targetKeyword,
+        "questionIndex": _currentQuestionIndex,
       };
 
       print("📤 요청 전송: $payload");
@@ -97,14 +93,15 @@ class _DrinkingSmokingPageState extends State<DrinkingSmokingPage> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final hasKeyword = data["hasKeyword"] as bool? ?? false;
-        final keyword = data["keyword"] as String?;
+        final keywords = List<String>.from(data["keywords"] ?? []);
         
-        // 키워드가 확인되면 추가
-        if (hasKeyword && keyword != null && !_extractedKeywords.contains(keyword)) {
-          setState(() {
-            _extractedKeywords.add(keyword);
-          });
+        // 키워드가 있으면 추가
+        for (final keyword in keywords) {
+          if (!_extractedKeywords.contains(keyword)) {
+            setState(() {
+              _extractedKeywords.add(keyword);
+            });
+          }
         }
 
         // 다음 질문으로 이동
@@ -126,6 +123,7 @@ class _DrinkingSmokingPageState extends State<DrinkingSmokingPage> {
           setState(() {
             _isComplete = true;
             _currentQuestion = null;
+            _canProceed = true;
           });
         }
 
@@ -355,6 +353,7 @@ class _DrinkingSmokingPageState extends State<DrinkingSmokingPage> {
                       ),
                     ),
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Icon(Icons.help_outline, color: primaryColor, size: 20),
                         const SizedBox(width: 12),
@@ -365,6 +364,7 @@ class _DrinkingSmokingPageState extends State<DrinkingSmokingPage> {
                               fontSize: 14,
                               color: primaryColor,
                               fontWeight: FontWeight.w500,
+                              height: 1.4,
                             ),
                           ),
                         ),
@@ -472,6 +472,35 @@ class _DrinkingSmokingPageState extends State<DrinkingSmokingPage> {
                         _analyzeDrinkingSmoking();
                       }
                     },
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // 다음으로 버튼 (모든 질문 완료 시 활성화)
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: _canProceed
+                        ? () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const JobPage()),
+                            );
+                          }
+                        : null,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      side: BorderSide(color: _canProceed ? primaryColor : Colors.grey.shade400, width: 1.5),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      foregroundColor: _canProceed ? primaryColor : Colors.grey,
+                    ),
+                    child: Text(
+                      "다음으로",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: _canProceed ? primaryColor : Colors.grey,
+                      ),
+                    ),
                   ),
                 ),
               ],

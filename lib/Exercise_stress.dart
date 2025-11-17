@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'PastDisease.dart';
 
 class ExerciseStressPage extends StatefulWidget {
   const ExerciseStressPage({super.key});
@@ -19,6 +20,7 @@ class _ExerciseStressPageState extends State<ExerciseStressPage> {
   bool _isComplete = false;
   List<Map<String, String>> _conversationHistory = [];
   int _currentQuestionIndex = 0;
+  bool _canProceed = false;
 
   static const List<String> _questions = [
     "평소 생활에서 운동이나 신체활동은 어느 정도 하시나요?",
@@ -121,6 +123,7 @@ class _ExerciseStressPageState extends State<ExerciseStressPage> {
           setState(() {
             _isComplete = true;
             _currentQuestion = null;
+            _canProceed = true;
           });
         }
 
@@ -466,6 +469,35 @@ class _ExerciseStressPageState extends State<ExerciseStressPage> {
                         _analyzeExerciseStress();
                       }
                     },
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // 다음으로 버튼 (모든 질문 완료 시 활성화)
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: _canProceed
+                        ? () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const PastDiseasePage()),
+                            );
+                          }
+                        : null,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      side: BorderSide(color: _canProceed ? primaryColor : Colors.grey.shade400, width: 1.5),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      foregroundColor: _canProceed ? primaryColor : Colors.grey,
+                    ),
+                    child: Text(
+                      "다음으로",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: _canProceed ? primaryColor : Colors.grey,
+                      ),
+                    ),
                   ),
                 ),
               ],

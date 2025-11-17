@@ -8,7 +8,7 @@ import 'isdiseaseright.dart';
 import 'package:http/http.dart' as http;
 import 'AgePage.dart';
 import 'Drinking_smoking.dart';
-import 'JopPage.dart';
+import 'JobPage.dart';
 import 'Exercise_stress.dart';
 import 'PastDisease.dart';
 import 'isdiseaseright.dart';
@@ -34,7 +34,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueAccent),
         useMaterial3: true,
       ),
-      home: const RiskFactorPage(),
+      home: const HomeBackground(),
     );
   }
 }

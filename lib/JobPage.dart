@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'Exercise_stress.dart';
 
 class JobPage extends StatefulWidget {
   const JobPage({super.key});
@@ -19,6 +20,7 @@ class _JobPageState extends State<JobPage> {
   bool _isComplete = false;
   List<Map<String, String>> _conversationHistory = [];
   int _currentQuestionIndex = 0; // 0: 현재 직업, 1: 작업 환경
+  bool _canProceed = false;
   
   static const List<String> _questions = [
     "현재 어떤 일을 하고 계신가요?",
@@ -121,6 +123,7 @@ class _JobPageState extends State<JobPage> {
           setState(() {
             _isComplete = true;
             _currentQuestion = null;
+            _canProceed = true;
           });
         }
 
@@ -469,6 +472,35 @@ class _JobPageState extends State<JobPage> {
                         _analyzeJob();
                       }
                     },
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // 다음으로 버튼 (모든 질문 완료 시 활성화) - Drinking_smoking.dart와 동일한 위치/스타일
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: _canProceed
+                        ? () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const ExerciseStressPage()),
+                            );
+                          }
+                        : null,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      side: BorderSide(color: _canProceed ? primaryColor : Colors.grey.shade400, width: 1.5),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      foregroundColor: _canProceed ? primaryColor : Colors.grey,
+                    ),
+                    child: Text(
+                      "다음으로",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: _canProceed ? primaryColor : Colors.grey,
+                      ),
+                    ),
                   ),
                 ),
               ],

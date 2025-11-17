@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'AggravatingPage.dart';
 
 class YourDiseasePage extends StatefulWidget {
   final String followUpQuestion;
-  const YourDiseasePage({super.key, required this.followUpQuestion});
+  final String? initialUserInput;
+  const YourDiseasePage({super.key, required this.followUpQuestion, this.initialUserInput});
 
   @override
   State<YourDiseasePage> createState() => _YourDiseasePageState();
@@ -20,6 +22,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
   bool _isComplete = false;
   List<Map<String, String>> _conversationHistory = [];
   int _currentQuestionIndex = 0; // 0: 최초 질문
+  bool _canProceed = false;
 
   // followUpQuestion이 첫번째 질문이 되고, 이후 추가 질문은 여기서 관리
   late final List<String> _questions;
@@ -34,8 +37,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
     // 질문 리스트를 followUpQuestion으로 시작하도록 설정
     _questions = [
       widget.followUpQuestion,
-      "통증이 있다면 어떤 느낌인가요? (예: 쿡쿡, 짓눌림, 화끈거림, 찢어질 듯 등)",
-      "통증은 언제부터 시작됐나요? 그리고 어떤 상황에서 더 심해지나요? (운동, 숨쉬기, 기침, 식사 후, 스트레스 등)",
+      "통증은 언제부터 시작됐나요?",
       "숨이 차거나 숨쉬기 어렵거나, 식은땀/어지럼/메스꺼움 같은 증상이 함께 있나요?",
       "지금까지 말한 증상말고 다른 증상이 있나요?"
     ];
@@ -45,6 +47,13 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
       "role": "assistant",
       "content": _currentQuestion!,
     });
+
+    // 초기 진입 시 initialUserInput가 있으면 한 번 키워드 추출 호출 (answer는 "네")
+    if ((widget.initialUserInput ?? "").trim().isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _extractInitialKeywords(widget.initialUserInput!.trim());
+      });
+    }
   }
 
   @override
@@ -52,6 +61,48 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
     _inputController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  // 초기 진입 시, 대화 흐름/인덱스 변경 없이 키워드만 선 추출
+  Future<void> _extractInitialKeywords(String initialQuestion) async {
+    try {
+      final url = Uri.parse(
+        "http://localhost:3000/api/analyze/symptoms"
+      );
+
+      final payload = {
+        "question": initialQuestion,
+        "answer": "네",
+        "questionIndex": 0,
+      };
+
+      print("📤 초기 키워드 추출 요청: $payload");
+
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(payload),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final keywords = List<String>.from(data["keywords"] ?? []);
+
+        if (keywords.isNotEmpty && mounted) {
+          setState(() {
+            for (final keyword in keywords) {
+              if (!_extractedKeywords.contains(keyword)) {
+                _extractedKeywords.add(keyword);
+              }
+            }
+          });
+        }
+      } else {
+        print("⚠️ 초기 추출 서버 오류: ${response.statusCode} - ${response.body}");
+      }
+    } catch (e) {
+      print("❌ 초기 키워드 추출 오류: $e");
+    }
   }
 
   Future<void> _analyzeDisease() async {
@@ -130,6 +181,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
           setState(() {
             _isComplete = true;
             _currentQuestion = null;
+            _canProceed = true;
           });
         }
 
@@ -477,6 +529,35 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
                         _analyzeDisease();
                       }
                     },
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // 다음으로 버튼 (모든 질문 완료 시 활성화)
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: _canProceed
+                        ? () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const AggravatingPage()),
+                            );
+                          }
+                        : null,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      side: BorderSide(color: _canProceed ? primaryColor : Colors.grey.shade400, width: 1.5),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      foregroundColor: _canProceed ? primaryColor : Colors.grey,
+                    ),
+                    child: Text(
+                      "다음으로",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: _canProceed ? primaryColor : Colors.grey,
+                      ),
+                    ),
                   ),
                 ),
               ],

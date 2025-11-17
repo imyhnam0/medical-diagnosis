@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'isdiseaseright.dart';
 
 class PastDiseasePage extends StatefulWidget {
   const PastDiseasePage({super.key});
@@ -19,12 +20,10 @@ class _PastDiseasePageState extends State<PastDiseasePage> {
   bool _isComplete = false;
   List<Map<String, String>> _conversationHistory = [];
   int _currentQuestionIndex = 0; // 0: 과거 질환, 1: 치료 경험 등
+  bool _canProceed = false;
 
   static const List<String> _questions = [
     "과거에 진단받은 만성 질환이 있나요?(예: 고혈압, 당뇨, 고지혈증, 심장질환, 간질환, 결합조직질환, 자가면역질환, 비만 등)",
-    "호흡기 질환을 앓은 적이 있나요?(예: 천식, COPD, 폐렴, 결핵, 만성 기침, 흡연 관련 질환 등)",
-    "위장이나 소화기 질환을 앓은 적이 있나요?(예: 역류성 식도염, 위염, 담석, 담도질환, 위장관 감염, 헬리코박터 감염 등)",
-    "정신과적 병력이나 스트레스 관련 질환을 앓은 적이 있나요?(예: 불안장애, 우울증, 공황발작, 만성 피로, 정신과 진단 등)",
   ];
 
   final primaryColor = const Color(0xFF0F4C75);
@@ -123,6 +122,7 @@ class _PastDiseasePageState extends State<PastDiseasePage> {
           setState(() {
             _isComplete = true;
             _currentQuestion = null;
+            _canProceed = true;
           });
         }
 
@@ -237,9 +237,9 @@ class _PastDiseasePageState extends State<PastDiseasePage> {
                             ],
                             border: !isUser
                                 ? Border.all(
-                              color: primaryColor.withOpacity(0.2),
-                              width: 1,
-                            )
+                                    color: primaryColor.withOpacity(0.2),
+                                    width: 1,
+                                  )
                                 : null,
                           ),
                           child: Text(
@@ -421,7 +421,7 @@ class _PastDiseasePageState extends State<PastDiseasePage> {
                       height: 1.5,
                     ),
                     decoration: InputDecoration(
-                      hintText: _isComplete
+                      hintText: _isComplete 
                           ? "모든 질문에 답변하셨습니다"
                           : "답변을 입력하세요",
                       hintStyle: TextStyle(
@@ -471,6 +471,35 @@ class _PastDiseasePageState extends State<PastDiseasePage> {
                         _analyzePastDisease();
                       }
                     },
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // 다음으로 버튼 (모든 질문 완료 시 활성화)
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: _canProceed
+                        ? () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const IsDiseaseRightPage()),
+                            );
+                          }
+                        : null,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      side: BorderSide(color: _canProceed ? primaryColor : Colors.grey.shade400, width: 1.5),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      foregroundColor: _canProceed ? primaryColor : Colors.grey,
+                    ),
+                    child: Text(
+                      "다음으로",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: _canProceed ? primaryColor : Colors.grey,
+                      ),
+                    ),
                   ),
                 ),
               ],
