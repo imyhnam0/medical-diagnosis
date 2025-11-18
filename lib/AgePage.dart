@@ -101,7 +101,7 @@ class _AgePageState extends State<AgePage> {
 
     try {
       final url = Uri.parse(
-        "http://localhost:3000/api/analyze/age-bmi-gender"
+        "http://98.91.66.27:8080/api/analyze/age-bmi-gender"
       );
 
       final payload = {

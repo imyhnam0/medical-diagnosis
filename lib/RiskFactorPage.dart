@@ -23,8 +23,7 @@ class _RiskFactorPageState extends State<RiskFactorPage> {
   bool _canProceed = false;
 
   static const List<String> _questions = [
-    "현재 가지고 있는 질환이나 과거에 진단받았던 질환이 있나요? (예: 당뇨, 고혈압, 암, 간질환 등)",
-    "가족력이나 유전적 요인, 수술/치료 경험, 호르몬/연령 관련 요소가 있나요?"
+    "현재 가지고 있는 질환이 있나요? (예: 당뇨, 고혈압, 암, 간질환 등)",
   ];
 
   final primaryColor = const Color(0xFF0F4C75);
@@ -74,7 +73,7 @@ class _RiskFactorPageState extends State<RiskFactorPage> {
 
     try {
       final url = Uri.parse(
-        "http://localhost:3000/api/analyze/riskfactor"
+        "http://98.91.66.27:8080/api/analyze/riskfactor"
       );
 
       final payload = {

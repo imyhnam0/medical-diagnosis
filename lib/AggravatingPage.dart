@@ -25,7 +25,6 @@ class _AggravatingPageState extends State<AggravatingPage> {
   static const List<String> _questions = [
     "어떤 상황에서 증상이 더 심해지나요? (예: 움직이거나 눕거나 추울 때 등)",
     "특정 음식, 자세, 환경, 감정 상태가 증상을 악화시키나요?",
-    "운동, 스트레스, 기침, 깊은 숨 들이쉬기 같은 행동이 증상에 영향을 주나요?",
     "계절, 온도 변화, 날씨, 공기 등의 외부 환경 요인이 증상을 악화시키나요?",
   ];
 
@@ -76,7 +75,7 @@ class _AggravatingPageState extends State<AggravatingPage> {
 
     try {
       final url = Uri.parse(
-        "http://localhost:3000/api/analyze/aggravation"
+        "http://98.91.66.27:8080/api/analyze/aggravation"
       );
 
       final payload = {

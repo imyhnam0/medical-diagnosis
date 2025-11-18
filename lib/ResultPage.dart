@@ -39,9 +39,9 @@ class _ResultPageState extends State<ResultPage> {
   Future<void> _calculateDiseaseScores() async {
     try {
       // 상위 2개
-      final respTop = await http.get(Uri.parse('http://localhost:3000/api/analyze/top-diseases'));
+      final respTop = await http.get(Uri.parse('http://98.91.66.27:8080/api/analyze/top-diseases'));
       // 전체 질병 점수
-      final respAll = await http.get(Uri.parse('http://localhost:3000/api/analyze/all-diseases'));
+      final respAll = await http.get(Uri.parse('http://98.91.66.27:8080/api/analyze/all-diseases'));
 
       if (respTop.statusCode == 200) {
         final dataTop = jsonDecode(respTop.body);
@@ -115,7 +115,7 @@ class _ResultPageState extends State<ResultPage> {
   Future<DiseaseInfo> _getDiseaseInfoFromAI(String diseaseName) async {
     try {
       final response = await http.post(
-        Uri.parse("http://localhost:3000/api/analyze/disease-info"),
+        Uri.parse("http://98.91.66.27:8080/api/analyze/disease-info"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"diseaseName": diseaseName}),
       );
@@ -145,7 +145,7 @@ class _ResultPageState extends State<ResultPage> {
 
   void _goToMain() async {
     try {
-      await http.post(Uri.parse('http://localhost:3000/api/analyze/reset-diagnosis'));
+      await http.post(Uri.parse('http://98.91.66.27:8080/api/analyze/reset-diagnosis'));
     } catch (_) {}
     Navigator.pushAndRemoveUntil(
       context,

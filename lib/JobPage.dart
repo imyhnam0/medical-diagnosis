@@ -74,7 +74,7 @@ class _JobPageState extends State<JobPage> {
 
     try {
       final url = Uri.parse(
-        "http://localhost:3000/api/analyze/job"
+        "http://98.91.66.27:8080/api/analyze/job"
       );
 
       final payload = {

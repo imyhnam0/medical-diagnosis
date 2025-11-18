@@ -73,7 +73,7 @@ class _PastDiseasePageState extends State<PastDiseasePage> {
 
     try {
       final url = Uri.parse(
-        "http://localhost:3000/api/analyze/past-disease"
+        "http://98.91.66.27:8080/api/analyze/past-disease"
       );
 
       final payload = {

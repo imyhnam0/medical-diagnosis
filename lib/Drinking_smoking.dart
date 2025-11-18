@@ -74,7 +74,7 @@ class _DrinkingSmokingPageState extends State<DrinkingSmokingPage> {
 
     try {
       final url = Uri.parse(
-        "http://localhost:3000/api/analyze/drinking-smoking"
+        "http://98.91.66.27:8080/api/analyze/drinking-smoking"
       );
 
       final payload = {

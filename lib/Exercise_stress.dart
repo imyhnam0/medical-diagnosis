@@ -25,7 +25,6 @@ class _ExerciseStressPageState extends State<ExerciseStressPage> {
   static const List<String> _questions = [
     "평소 생활에서 운동이나 신체활동은 어느 정도 하시나요?",
     "최근 스트레스를 느끼는 일이 있었나요? 구체적으로 말씀해주실 수 있을까요?",
-    "스트레스를 받으면 보통 어떻게 반응하시나요? 해결하려고 하나요? 아니면 피하거나 무기력해지나요?",
   ];
 
   final primaryColor = const Color(0xFF0F4C75);
@@ -75,7 +74,7 @@ class _ExerciseStressPageState extends State<ExerciseStressPage> {
 
     try {
       final url = Uri.parse(
-        "http://localhost:3000/api/analyze/exercise-stress"
+        "http://98.91.66.27:8080/api/analyze/exercise-stress"
       );
 
       final payload = {

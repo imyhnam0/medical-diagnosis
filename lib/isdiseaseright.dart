@@ -19,7 +19,7 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
 
   /// @analzeChestPain.js 를 참고하여, 흉통 증상과 유사 여부/유사문장/후속질문 반환 받음
   Future<Map<String, dynamic>> checkChestPain(String input) async {
-    final url = Uri.parse("http://localhost:3000/api/analyze/chestpain"); // Node.js 백엔드 주소
+    final url = Uri.parse("http://98.91.66.27:8080/api/analyze/chestpain");
 
     try {
       final response = await http.post(

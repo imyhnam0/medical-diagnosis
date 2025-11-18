@@ -37,8 +37,8 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
     // 질문 리스트를 followUpQuestion으로 시작하도록 설정
     _questions = [
       widget.followUpQuestion,
-      "통증은 언제부터 시작됐나요?",
-      "숨이 차거나 숨쉬기 어렵거나, 식은땀/어지럼/메스꺼움 같은 증상이 함께 있나요?",
+      "운동이나 다른 행동이나 관련이 있나요?",
+      "스트레스와 관련이 있는 요소가 있나요?",
       "지금까지 말한 증상말고 다른 증상이 있나요?"
     ];
 
@@ -67,7 +67,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
   Future<void> _extractInitialKeywords(String initialQuestion) async {
     try {
       final url = Uri.parse(
-        "http://localhost:3000/api/analyze/symptoms"
+        "http://98.91.66.27:8080/api/analyze/symptoms"
       );
 
       final payload = {
@@ -132,7 +132,7 @@ class _YourDiseasePageState extends State<YourDiseasePage> {
 
     try {
       final url = Uri.parse(
-        "http://localhost:3000/api/analyze/symptoms"
+        "http://98.91.66.27:8080/api/analyze/symptoms"
       );
 
       final payload = {
