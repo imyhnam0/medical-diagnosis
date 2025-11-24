@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'yourdisease.dart';
+import 'AgePage.dart';
 
 class IsDiseaseRightPage extends StatefulWidget {
   final Map<String, dynamic>? personalInfo;
@@ -74,7 +74,7 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => YourDiseasePage(
+            builder: (_) => AgePage(
               followUpQuestion: followUpQuestion,
               initialUserInput: input,
             ),

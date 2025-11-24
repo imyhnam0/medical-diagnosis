@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'Drinking_smoking.dart';
+import 'yourdisease.dart';
+import 'AllQuestionPage.dart';
 
 class AgePage extends StatefulWidget {
-  const AgePage({super.key});
+  final String? followUpQuestion;
+  final String? initialUserInput;
+  
+  const AgePage({super.key, this.followUpQuestion, this.initialUserInput});
 
   @override
   State<AgePage> createState() => _AgePageState();
@@ -395,7 +399,12 @@ class _AgePageState extends State<AgePage> {
                       ? () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => const DrinkingSmokingPage()),
+                            MaterialPageRoute(
+                              builder: (_) => AllQuestionPage(
+                                followUpQuestion: widget.followUpQuestion ?? "",
+                                initialUserInput: widget.initialUserInput,
+                              ),
+                            ),
                           );
                         }
                       : null,

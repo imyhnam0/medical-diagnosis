@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'ResultPage.dart';
+import 'AgePage.dart';
+import 'drinking_smoking.dart';
 
 class RiskFactorPage extends StatefulWidget {
   const RiskFactorPage({super.key});
@@ -482,7 +484,7 @@ class _RiskFactorPageState extends State<RiskFactorPage> {
                         ? () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (_) => const ResultPage()),
+                              MaterialPageRoute(builder: (_) => const DrinkingSmokingPage()),
                             );
                           }
                         : null,

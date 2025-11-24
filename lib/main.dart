@@ -591,7 +591,7 @@ class _ConsentPageState extends State<ConsentPage>
                             Navigator.pop(context);
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => const AgePage())
+                              MaterialPageRoute(builder: (context) => const IsDiseaseRightPage())
                             );
                           },
                           style: ElevatedButton.styleFrom(
