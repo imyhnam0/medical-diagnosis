@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'AgePage.dart';
+import 'utils/session_manager.dart';
 
 class IsDiseaseRightPage extends StatefulWidget {
   final Map<String, dynamic>? personalInfo;
@@ -19,14 +20,27 @@ class _IsDiseaseRightPageState extends State<IsDiseaseRightPage> {
 
   /// @analzeChestPain.js 를 참고하여, 흉통 증상과 유사 여부/유사문장/후속질문 반환 받음
   Future<Map<String, dynamic>> checkChestPain(String input) async {
-    final url = Uri.parse("http://98.91.66.27:8080/api/analyze/chestpain");
+    final url = Uri.parse("https://snumedai.store/api/analyze/chestpain");
+    final sessionId = SessionManager.getSessionId();
+    
+    final headers = <String, String>{
+      "Content-Type": "application/json",
+    };
+    
+    // 세션 ID가 있으면 헤더에 추가
+    if (sessionId != null) {
+      headers["X-Session-Id"] = sessionId;
+    }
 
     try {
       final response = await http.post(
         url,
-        headers: {"Content-Type": "application/json"},
+        headers: headers,
         body: jsonEncode({"userInput": input}),
       );
+      
+      // 응답에서 세션 ID 저장
+      SessionManager.saveSessionIdFromResponse(response.headers);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);

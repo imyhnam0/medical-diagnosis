@@ -1,18 +1,9 @@
 import 'package:flutter/material.dart';
 import 'isdiseaseright.dart';
-import 'AggravatingPage.dart';
-import 'RiskFactorPage.dart';
-import 'PastDisease.dart';
-import 'yourdisease.dart';
 import 'isdiseaseright.dart';
 import 'package:http/http.dart' as http;
 import 'AgePage.dart';
-import 'Drinking_smoking.dart';
-import 'JobPage.dart';
-import 'Exercise_stress.dart';
-import 'PastDisease.dart';
 import 'isdiseaseright.dart';
-import 'AggravatingPage.dart';
 
 
 void main() async {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'main.dart';
+import 'utils/session_manager.dart';
 
 class DiseaseInfo {
   final String description;
@@ -38,10 +39,33 @@ class _ResultPageState extends State<ResultPage> {
   /// 백엔드에서 상위 질병 2개를 받아오고, 각 질병 정보 로드
   Future<void> _calculateDiseaseScores() async {
     try {
+      final sessionId = SessionManager.getSessionId();
+      final headers = <String, String>{
+        "Content-Type": "application/json",
+      };
+      
+      // 세션 ID가 있으면 헤더에 추가
+      if (sessionId != null) {
+        headers["X-Session-Id"] = sessionId;
+      }
+      
       // 상위 2개
-      final respTop = await http.get(Uri.parse('http://98.91.66.27:8080/api/analyze/top-diseases'));
+      final respTop = await http.get(
+        Uri.parse('https://snumedai.store/api/analyze/top-diseases'),
+        headers: headers,
+      );
+      
+      // 응답에서 세션 ID 저장
+      SessionManager.saveSessionIdFromResponse(respTop.headers);
+      
       // 전체 질병 점수
-      final respAll = await http.get(Uri.parse('http://98.91.66.27:8080/api/analyze/all-diseases'));
+      final respAll = await http.get(
+        Uri.parse('https://snumedai.store/api/analyze/all-diseases'),
+        headers: headers,
+      );
+      
+      // 응답에서 세션 ID 저장
+      SessionManager.saveSessionIdFromResponse(respAll.headers);
 
       if (respTop.statusCode == 200) {
         final dataTop = jsonDecode(respTop.body);
@@ -94,48 +118,84 @@ class _ResultPageState extends State<ResultPage> {
 
   /// AI로 질병 정보 가져오기
   Future<void> _loadDiseaseInfo() async {
-    if (_topDiseases.isEmpty) return;
+    if (_topDiseases.isEmpty) {
+      print("⚠️ _topDiseases가 비어있어 질병 정보를 로드할 수 없습니다.");
+      return;
+    }
+    
+    print("📋 질병 정보 로딩 시작. 질병 개수: ${_topDiseases.length}");
     setState(() => _isLoadingInfo = true);
+    
     try {
       for (var disease in _topDiseases) {
         if (!_diseaseInfo.containsKey(disease.key)) {
           try {
+            print("🔄 질병 정보 로딩 중: ${disease.key}");
             final info = await _getDiseaseInfoFromAI(disease.key);
-            _diseaseInfo[disease.key] = info;
-          } catch (e) {
+            setState(() {
+              _diseaseInfo[disease.key] = info;
+            });
+            print("✅ 질병 정보 로딩 완료: ${disease.key}");
+          } catch (e, stackTrace) {
             print("❌ 질병 정보 로딩 실패: ${disease.key} - $e");
+            print("❌ 스택 트레이스: $stackTrace");
           }
+        } else {
+          print("ℹ️ 이미 로드된 질병 정보: ${disease.key}");
         }
       }
     } finally {
       setState(() => _isLoadingInfo = false);
+      print("📋 질병 정보 로딩 완료. 총 ${_diseaseInfo.length}개");
     }
   }
 
   Future<DiseaseInfo> _getDiseaseInfoFromAI(String diseaseName) async {
     try {
+      print("🔍 질병 정보 요청: $diseaseName");
+      final sessionId = SessionManager.getSessionId();
+      final headers = <String, String>{
+        "Content-Type": "application/json",
+      };
+      
+      // 세션 ID가 있으면 헤더에 추가
+      if (sessionId != null) {
+        headers["X-Session-Id"] = sessionId;
+      }
+      
       final response = await http.post(
-        Uri.parse("http://98.91.66.27:8080/api/analyze/disease-info"),
-        headers: {"Content-Type": "application/json"},
+        Uri.parse("https://snumedai.store/api/analyze/disease-info"),
+        headers: headers,
         body: jsonEncode({"diseaseName": diseaseName}),
       );
+      
+      // 응답에서 세션 ID 저장
+      SessionManager.saveSessionIdFromResponse(response.headers);
+
+      print("📥 질병 정보 응답 상태: ${response.statusCode}");
+      print("📥 질병 정보 응답 본문: ${response.body}");
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-
+        print("✅ 질병 정보 파싱 성공: $data");
+        
+        final description = data["description"] ?? "정보를 가져올 수 없습니다.";
+        final prognosis = data["prognosis"] ?? "예후 정보를 가져올 수 없습니다.";
+        
         return DiseaseInfo(
-          description: data["description"] ?? "정보를 가져올 수 없습니다.",
-          prognosis: data["prognosis"] ?? "예후 정보를 가져올 수 없습니다.",
+          description: description,
+          prognosis: prognosis,
         );
       } else {
-        print("⚠️ 서버 오류: ${response.statusCode}");
+        print("⚠️ 서버 오류: ${response.statusCode} - ${response.body}");
         return DiseaseInfo(
           description: "정보를 가져올 수 없습니다.",
           prognosis: "예후 정보를 가져올 수 없습니다.",
         );
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       print("❌ 서버 연결 실패: $e");
+      print("❌ 스택 트레이스: $stackTrace");
       return DiseaseInfo(
         description: "정보를 가져올 수 없습니다.",
         prognosis: "예후 정보를 가져올 수 없습니다.",
@@ -145,8 +205,30 @@ class _ResultPageState extends State<ResultPage> {
 
   void _goToMain() async {
     try {
-      await http.post(Uri.parse('http://98.91.66.27:8080/api/analyze/reset-diagnosis'));
-    } catch (_) {}
+      final sessionId = SessionManager.getSessionId();
+      final headers = <String, String>{
+        "Content-Type": "application/json",
+      };
+      
+      // 세션 ID가 있으면 헤더에 추가
+      if (sessionId != null) {
+        headers["X-Session-Id"] = sessionId;
+      }
+      
+      final response = await http.post(
+        Uri.parse('https://snumedai.store/api/analyze/reset-diagnosis'),
+        headers: headers,
+        body: jsonEncode({}),
+      );
+      
+      // 응답에서 세션 ID 저장
+      SessionManager.saveSessionIdFromResponse(response.headers);
+      
+      // 세션 초기화 (새로운 검진 시작)
+      SessionManager.resetSession();
+    } catch (e) {
+      print("❌ reset-diagnosis 오류: $e");
+    }
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (context) => const MyApp()),

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'yourdisease.dart';
 import 'AllQuestionPage.dart';
+import 'utils/session_manager.dart';
 
 class AgePage extends StatefulWidget {
   final String? followUpQuestion;
@@ -105,7 +105,7 @@ class _AgePageState extends State<AgePage> {
 
     try {
       final url = Uri.parse(
-        "http://98.91.66.27:8080/api/analyze/age-bmi-gender"
+        "https://snumedai.store/api/analyze/age-bmi-gender"
       );
 
       final payload = {
@@ -116,12 +116,25 @@ class _AgePageState extends State<AgePage> {
       };
 
       print("📤 요청 전송: $payload");
+      final sessionId = SessionManager.getSessionId();
+      
+      final headers = <String, String>{
+        "Content-Type": "application/json",
+      };
+      
+      // 세션 ID가 있으면 헤더에 추가
+      if (sessionId != null) {
+        headers["X-Session-Id"] = sessionId;
+      }
 
       final response = await http.post(
         url,
-        headers: {"Content-Type": "application/json"},
+        headers: headers,
         body: jsonEncode(payload),
       );
+      
+      // 응답에서 세션 ID 저장
+      SessionManager.saveSessionIdFromResponse(response.headers);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);

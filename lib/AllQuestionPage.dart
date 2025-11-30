@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'ResultPage.dart';
+import 'utils/session_manager.dart';
 
 class AllQuestionPage extends StatefulWidget {
   final String followUpQuestion;
@@ -35,15 +36,12 @@ class _AllQuestionPageState extends State<AllQuestionPage> {
     // 0: 증상 분석 (yourdisease)
     [
       "", // followUpQuestion으로 대체됨
-      "운동이나 다른 행동이나 관련이 있나요?",
-      "스트레스와 관련이 있는 요소가 있나요?",
+      "운동 또는 스트레스와 관련이 있나요?",
       "지금까지 말한 증상말고 다른 증상이 있나요?",
     ],
     // 1: 악화 요인 (AggravatingPage)
     [
       "어떤 상황에서 증상이 더 심해지나요? (예: 움직이거나 눕거나 추울 때 등)",
-      "특정 음식, 자세, 환경, 감정 상태가 증상을 악화시키나요?",
-      "계절, 온도 변화, 날씨, 공기 등의 외부 환경 요인이 증상을 악화시키나요?",
     ],
     // 2: 위험 요인 (RiskFactorPage)
     [
@@ -57,12 +55,10 @@ class _AllQuestionPageState extends State<AllQuestionPage> {
     // 4: 직업 (JobPage)
     [
       "현재 어떤 일을 하고 계신가요?",
-      "일하실 때 주로 어떤 환경에서 일하시나요?\n(예: 앉아서, 서서, 야외에서, 무거운 물건을 자주 드는지 등)",
     ],
     // 5: 운동/스트레스 (Exercise_stress)
     [
       "평소 생활에서 운동이나 신체활동은 어느 정도 하시나요?",
-      "최근 스트레스를 느끼는 일이 있었나요? 구체적으로 말씀해주실 수 있을까요?",
     ],
     // 6: 과거 질환 (PastDisease)
     [
@@ -72,13 +68,13 @@ class _AllQuestionPageState extends State<AllQuestionPage> {
 
   // 각 섹션별 API 엔드포인트
   final List<String> _sectionApiEndpoints = [
-    "http://98.91.66.27:8080/api/analyze/symptoms",
-    "http://98.91.66.27:8080/api/analyze/aggravation",
-    "http://98.91.66.27:8080/api/analyze/riskfactor",
-    "http://98.91.66.27:8080/api/analyze/drinking-smoking",
-    "http://98.91.66.27:8080/api/analyze/job",
-    "http://98.91.66.27:8080/api/analyze/exercise-stress",
-    "http://98.91.66.27:8080/api/analyze/past-disease",
+    "https://snumedai.store/api/analyze/symptoms",
+    "https://snumedai.store/api/analyze/aggravation",
+    "https://snumedai.store/api/analyze/riskfactor",
+    "https://snumedai.store/api/analyze/drinking-smoking",
+    "https://snumedai.store/api/analyze/job",
+    "https://snumedai.store/api/analyze/exercise-stress",
+    "https://snumedai.store/api/analyze/past-disease",
   ];
 
   // 각 섹션별 제목
@@ -127,19 +123,33 @@ class _AllQuestionPageState extends State<AllQuestionPage> {
   Future<void> _extractInitialKeywords(String initialQuestion) async {
     try {
       final url = Uri.parse(_sectionApiEndpoints[0]);
+
       final payload = {
-        "question": widget.followUpQuestion,
+        "question": initialQuestion,
         "answer": "네",
         "questionIndex": 0,
       };
 
       print("📤 초기 키워드 추출 요청: $payload");
+      final sessionId = SessionManager.getSessionId();
+      
+      final headers = <String, String>{
+        "Content-Type": "application/json",
+      };
+      
+      // 세션 ID가 있으면 헤더에 추가
+      if (sessionId != null) {
+        headers["X-Session-Id"] = sessionId;
+      }
 
       final response = await http.post(
         url,
-        headers: {"Content-Type": "application/json"},
+        headers: headers,
         body: jsonEncode(payload),
       );
+      
+      // 응답에서 세션 ID 저장
+      SessionManager.saveSessionIdFromResponse(response.headers);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -154,6 +164,8 @@ class _AllQuestionPageState extends State<AllQuestionPage> {
             }
           });
         }
+      } else {
+        print("⚠️ 초기 추출 서버 오류: ${response.statusCode} - ${response.body}");
       }
     } catch (e) {
       print("❌ 초기 키워드 추출 오류: $e");
@@ -207,12 +219,25 @@ class _AllQuestionPageState extends State<AllQuestionPage> {
       };
 
       print("📤 요청 전송: $payload");
+      final sessionId = SessionManager.getSessionId();
+      
+      final headers = <String, String>{
+        "Content-Type": "application/json",
+      };
+      
+      // 세션 ID가 있으면 헤더에 추가
+      if (sessionId != null) {
+        headers["X-Session-Id"] = sessionId;
+      }
 
       final response = await http.post(
         url,
-        headers: {"Content-Type": "application/json"},
+        headers: headers,
         body: jsonEncode(payload),
       );
+      
+      // 응답에서 세션 ID 저장
+      SessionManager.saveSessionIdFromResponse(response.headers);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -305,6 +330,25 @@ class _AllQuestionPageState extends State<AllQuestionPage> {
     return _sectionTitles[_currentSectionIndex];
   }
 
+  // 총 질문 수 계산
+  int get _totalQuestions {
+    int total = 0;
+    for (var section in _sectionQuestions) {
+      total += section.length;
+    }
+    return total;
+  }
+
+  // 현재까지 답변한 질문 수 계산
+  int get _answeredQuestions {
+    int answered = 0;
+    for (int i = 0; i < _currentSectionIndex; i++) {
+      answered += _sectionQuestions[i].length;
+    }
+    answered += _currentQuestionIndex;
+    return answered;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -369,8 +413,7 @@ class _AllQuestionPageState extends State<AllQuestionPage> {
                       LinearProgressIndicator(
                         value: _isComplete
                             ? 1.0
-                            : (_currentSectionIndex + _currentQuestionIndex / _sectionQuestions[_currentSectionIndex].length) /
-                                _sectionQuestions.length,
+                            : _answeredQuestions / _totalQuestions,
                         backgroundColor: Colors.grey[200],
                         valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
                         minHeight: 6,
@@ -380,7 +423,7 @@ class _AllQuestionPageState extends State<AllQuestionPage> {
                 ),
                 const SizedBox(width: 16),
                 Text(
-                  "${_currentSectionIndex + 1}/${_sectionQuestions.length}",
+                  "$_answeredQuestions/$_totalQuestions",
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -486,22 +529,32 @@ class _AllQuestionPageState extends State<AllQuestionPage> {
                             ],
                           ),
                           const SizedBox(height: 16),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: _allExtractedKeywords.map((keyword) {
-                              return Chip(
-                                label: Text(
-                                  keyword,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                backgroundColor: primaryColor.withOpacity(0.1),
-                                side: BorderSide(color: primaryColor.withOpacity(0.3)),
-                                labelStyle: TextStyle(color: primaryColor),
-                              );
-                            }).toList(),
+                          ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxHeight: 80, // 약 2줄 정도의 높이 (키워드 Chip 높이 + runSpacing 고려)
+                            ),
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.vertical,
+                              child: Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: _allExtractedKeywords.map((keyword) {
+                                  return Chip(
+                                    label: Text(
+                                      keyword,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                    backgroundColor: primaryColor.withOpacity(0.1),
+                                    side: BorderSide(color: primaryColor.withOpacity(0.3)),
+                                    labelStyle: TextStyle(color: primaryColor, fontSize: 11),
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  );
+                                }).toList(),
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -526,40 +579,6 @@ class _AllQuestionPageState extends State<AllQuestionPage> {
             ),
             child: Column(
               children: [
-                // 현재 질문 표시
-                if (_currentQuestion != null && !_isComplete)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      color: primaryColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: primaryColor.withOpacity(0.3),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(Icons.help_outline, color: primaryColor, size: 20),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            _currentQuestion!,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: primaryColor,
-                              fontWeight: FontWeight.w500,
-                              height: 1.4,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
                 // 완료 메시지
                 if (_isComplete)
                   Container(
